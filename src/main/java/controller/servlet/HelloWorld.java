@@ -1,5 +1,9 @@
 package controller.servlet;
 
+import dao.CurrencyDAO;
+import model.Currency;
+import service.CurrencyService;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -8,26 +12,23 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
-@WebServlet(urlPatterns = "/hello")
+@WebServlet(urlPatterns = "/currencies")
 public class HelloWorld extends HttpServlet {
 
-    @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        resp.getWriter().append("Hello world").append(req.getMethod()).append(req.getContextPath());
-
-        HttpSession session = req.getSession();
-        if (session.getAttribute("name") == null) {
-            session.setAttribute("name", "Hello world session");
-            resp.getWriter().append("no previous session");
-        } else {
-            resp.getWriter().append(session.getAttribute("name").toString());
-        }
+    private CurrencyService currencyService;
+    public HelloWorld() {
+        this.currencyService = new CurrencyService();
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setCharacterEncoding("UTF-8");
+        resp.setContentType("text/plain; charset=UTF-8");
+
         PrintWriter writer = resp.getWriter();
-        writer.write("Hello, Servlet!");
+        List<Currency> allCurrencies = currencyService.findAllCurrencies();
+        writer.write(allCurrencies.toString());
     }
 }
