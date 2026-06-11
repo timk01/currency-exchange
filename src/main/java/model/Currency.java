@@ -6,6 +6,9 @@ public class Currency {
     private String fullName;
     private String sign;
 
+    public Currency() {
+    }
+
     public Currency(String code, String fullName, String sign) {
         this.code = code;
         this.fullName = fullName;

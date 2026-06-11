@@ -1,12 +1,12 @@
 package converter;
 
-import dto.responce.CurrencyDTO;
+import dto.responce.CurrencyRespDTO;
 import model.Currency;
 
-public class CurrencyToCurrencyDTOConverter implements Converter<CurrencyDTO, Currency> {
+public class CurrencyToCurrencyDTOConverter implements Converter<CurrencyRespDTO, Currency> {
     @Override
-    public CurrencyDTO convert(Currency currency) {
-        return new CurrencyDTO(
+    public CurrencyRespDTO convert(Currency currency) {
+        return new CurrencyRespDTO(
                 currency.getId(),
                 currency.getFullName(),
                 currency.getCode(),
