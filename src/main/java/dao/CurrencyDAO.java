@@ -1,5 +1,6 @@
 package dao;
 
+import exception.InternalServerException;
 import model.Currency;
 
 import java.sql.*;
@@ -31,7 +32,7 @@ public class CurrencyDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new InternalServerException("internal server error", e);
         }
         return currencies;
     }
