@@ -2,6 +2,7 @@ package service;
 
 import converter.Converter;
 import converter.CurrencyToCurrencyDTOConverter;
+import dao.CurrenciesDAO;
 import dao.CurrencyDAO;
 import dto.request.CurrencyReqDTO;
 import dto.responce.CurrencyRespDTO;
@@ -20,16 +21,8 @@ public class CurrencyService {
         this.converter = new CurrencyToCurrencyDTOConverter();
     }
 
-    public List<CurrencyRespDTO> findAllCurrencies() {
-        List<Currency> currencies = currencyDAO.findAll();
-        return currencies.stream()
-                .map(currency -> converter.convert(currency))
-                .collect(Collectors.toList());
-    }
-
-    public CurrencyRespDTO createCurrency(CurrencyReqDTO currencyReqDTO) {
-        Currency currency = currencyDAO.createCurrency(currencyReqDTO);
+    public CurrencyRespDTO findCurrency(String code) {
+        Currency currency = currencyDAO.findCurrency(code);
         return converter.convert(currency);
     }
-
 }

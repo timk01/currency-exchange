@@ -1,12 +1,12 @@
 package controller.servlet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.request.CurrencyReqDTO;
 import dto.responce.CurrencyRespDTO;
 import dto.responce.ErrorResponseDTO;
 import exception.CurrencyAlreadyExistsException;
+import exception.CurrencyIsNotFoundException;
 import exception.InternalServerException;
-import exception.MissingRequireFieldException;
+import service.CurrenciesService;
 import service.CurrencyService;
 
 import javax.servlet.annotation.WebServlet;
@@ -16,7 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet(urlPatterns = "/currencies")
+@WebServlet(urlPatterns = "/currency/*")
 public class CurrencyServlet extends HttpServlet {
 
     private CurrencyService currencyService;
@@ -30,50 +30,24 @@ public class CurrencyServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json; charset=UTF-8");
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-            List<CurrencyRespDTO> allCurrencies = currencyService.findAllCurrencies();
-            String currenciesJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(allCurrencies);
-
-            resp.getWriter().write(currenciesJson);
-        } catch (InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
-        }
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        req.setCharacterEncoding("UTF-8");
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=UTF-8");
-
-        String name = req.getParameter("name");
-        String code = req.getParameter("code");
-        String sign = req.getParameter("sign");
-
+        String rawCode = req.getPathInfo();
         ObjectMapper objectMapper = new ObjectMapper();
 
-        if (hasMissingRequiredFields(name, code, sign)) {
+        if (hasMissingCode(rawCode)) {
             sendBadRequest(resp, objectMapper);
             return;
         }
 
         try {
-            CurrencyRespDTO currency = currencyService.createCurrency(new CurrencyReqDTO(name, code, sign));
-            resp.setStatus(HttpServletResponse.SC_CREATED);
+            CurrencyRespDTO foundCurrency = currencyService.findCurrency(rawCode.substring(1));
+            resp.setStatus(HttpServletResponse.SC_OK);
             String currencyJson = objectMapper
                     .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(currency);
+                    .writeValueAsString(foundCurrency);
+
             resp.getWriter().write(currencyJson);
-        } catch (CurrencyAlreadyExistsException e) {
-            resp.setStatus(HttpServletResponse.SC_CONFLICT);
+        }  catch (CurrencyIsNotFoundException e) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             String errorJson = objectMapper.writeValueAsString(
                     new ErrorResponseDTO(e.getMessage())
             );
@@ -89,16 +63,14 @@ public class CurrencyServlet extends HttpServlet {
         }
     }
 
-    private boolean hasMissingRequiredFields(String name, String code, String sign) {
-        return name == null || name.isBlank()
-                || code == null || code.isBlank()
-                || sign == null || sign.isBlank();
+    private boolean hasMissingCode(String code) {
+        return code == null || "/".equals(code);
     }
 
     private void sendBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Required field(s) is/are missing")
+                new ErrorResponseDTO("Currency code is not provided")
         );
 
         resp.getWriter().write(errorJson);
