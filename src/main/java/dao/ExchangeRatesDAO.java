@@ -1,9 +1,12 @@
 package dao;
 
 import dto.request.CurrencyReqDTO;
+import dto.responce.ExchangeRateRespDTO;
 import exception.CurrencyAlreadyExistsException;
 import exception.InternalServerException;
 import model.Currency;
+import model.ExchangeRate;
+import model.ExchangeRateTableProjection;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 
@@ -11,33 +14,72 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CurrenciesDAO {
+public class ExchangeRatesDAO {
 
-    public CurrenciesDAO() {
+    public ExchangeRatesDAO() {
     }
 
-    public List<Currency> findAllCurrencies() {
-        List<Currency> currencies = new ArrayList<>();
+    public List<ExchangeRateTableProjection> findAllExchangeRates() {
+        List<ExchangeRateTableProjection> exchangeRates = new ArrayList<>();
         try (Connection connection = DBConnectionFactory.getConnection()) {
-            try (PreparedStatement ps = connection.prepareStatement("select * from Currencies")) {
+            String query = """
+                    SELECT ER.ID as ID,
+                           ER.Rate as Rate,
+                           baseCurrency.ID as base_id,
+                           baseCurrency.FullName as base_name,
+                           baseCurrency.Code as base_code,
+                           baseCurrency.Sign as base_sign,
+                           targetCurrency.ID as target_id,
+                           targetCurrency.FullName as target_name,
+                           targetCurrency.Code as target_code,
+                           targetCurrency.Sign as target_sign
+                    from ExchangeRates AS ER
+                             JOIN Currencies as baseCurrency
+                                  ON ER.BaseCurrencyId = baseCurrency.ID
+                             JOIN Currencies as targetCurrency
+                                  ON ER.TargetCurrencyId = targetCurrency.ID
+                    """;
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
                     while (resultSet.next()) {
-                        currencies.add(new Currency(
-                                resultSet.getInt("ID"),
-                                resultSet.getString("Code"),
-                                resultSet.getString("FullName"),
-                                resultSet.getString("Sign")
-                        ));
+                        fillExchangeRates(exchangeRates, resultSet);
                     }
                 }
             }
         } catch (SQLException e) {
             throw new InternalServerException("internal server error", e);
         }
-        return currencies;
+        return exchangeRates;
     }
 
-    /**
+    private void fillExchangeRates(List<ExchangeRateTableProjection> exchangeRates,
+                                                        ResultSet resultSet) throws SQLException {
+        exchangeRates.add(
+                new ExchangeRateTableProjection(
+                        resultSet.getInt("ID"),
+                        new Currency(
+                                resultSet.getInt("base_id"),
+                                resultSet.getString("base_code"),
+                                resultSet.getString("base_name"),
+                                resultSet.getString("base_sign")
+                        ),
+                        new Currency(
+                                resultSet.getInt("target_id"),
+                                resultSet.getString("target_code"),
+                                resultSet.getString("target_name"),
+                                resultSet.getString("target_sign")
+                        ),
+                        resultSet.getDouble("Rate")
+                )
+        );
+    }
+
+    public static void main(String[] args) {
+        ExchangeRatesDAO exchangeRatesDAO = new ExchangeRatesDAO();
+        System.out.println(exchangeRatesDAO.findAllExchangeRates());
+    }
+    /*
+     *//**
      * Контракт:
      * Создаёт новую валюту в БД и возвращает созданную модель с ID,
      * сгенерированным базой данных.
@@ -47,7 +89,7 @@ public class CurrenciesDAO {
      * @return созданная валюта с заполненным ID
      * @throws CurrencyAlreadyExistsException если валюта с таким code уже существует (поле code униально)
      * @throws InternalServerException        если произошла ошибка БД ИЛИ не удалось получить generated key
-     */
+     *//*
     public Currency createCurrency(CurrencyReqDTO currencyReqDTO) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
 
@@ -101,5 +143,5 @@ public class CurrenciesDAO {
         if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
             throw new CurrencyAlreadyExistsException("currency already exists", e);
         }
-    }
+    }*/
 }

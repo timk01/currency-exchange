@@ -21,7 +21,7 @@ public class CurrenciesService {
     }
 
     public List<CurrencyRespDTO> findAllCurrencies() {
-        List<Currency> currencies = currencyDAO.findAll();
+        List<Currency> currencies = currencyDAO.findAllCurrencies();
         return currencies.stream()
                 .map(currency -> converter.convert(currency))
                 .collect(Collectors.toList());
