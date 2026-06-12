@@ -1,12 +1,10 @@
 package dao;
 
-import dto.request.CurrencyReqDTO;
-import dto.responce.ExchangeRateRespDTO;
-import exception.CurrencyAlreadyExistsException;
+import exception.ExchangeRateAlreadyExistsException;
 import exception.InternalServerException;
 import model.Currency;
-import model.ExchangeRate;
 import model.ExchangeRateTableProjection;
+import model.ExchangeRateTransfer;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 
@@ -53,7 +51,7 @@ public class ExchangeRatesDAO {
     }
 
     private void fillExchangeRates(List<ExchangeRateTableProjection> exchangeRates,
-                                                        ResultSet resultSet) throws SQLException {
+                                   ResultSet resultSet) throws SQLException {
         exchangeRates.add(
                 new ExchangeRateTableProjection(
                         resultSet.getInt("ID"),
@@ -74,74 +72,44 @@ public class ExchangeRatesDAO {
         );
     }
 
-    public static void main(String[] args) {
-        ExchangeRatesDAO exchangeRatesDAO = new ExchangeRatesDAO();
-        System.out.println(exchangeRatesDAO.findAllExchangeRates());
-    }
-    /*
-     *//**
-     * Контракт:
-     * Создаёт новую валюту в БД и возвращает созданную модель с ID,
-     * сгенерированным базой данных.
-     * -- не возвращает null
-     *
-     * @param currencyReqDTO данные для создания валюты: code, name, sign
-     * @return созданная валюта с заполненным ID
-     * @throws CurrencyAlreadyExistsException если валюта с таким code уже существует (поле code униально)
-     * @throws InternalServerException        если произошла ошибка БД ИЛИ не удалось получить generated key
-     *//*
-    public Currency createCurrency(CurrencyReqDTO currencyReqDTO) {
+    public ExchangeRateTableProjection createExchangeRate(ExchangeRateTransfer transferData) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
-
-            validateCurrencyCodeBefore(currencyReqDTO, connection);
-
             try (PreparedStatement ps = connection.prepareStatement(
-                    "insert into Currencies(Code, FullName, Sign)\n" +
+                    "insert into ExchangeRates(BaseCurrencyId, TargetCurrencyId, Rate)\n" +
                             "values (?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
             ) {
-                String code = currencyReqDTO.code();
-                ps.setString(1, code);
-                String name = currencyReqDTO.name();
-                ps.setString(2, name);
-                String sign = currencyReqDTO.sign();
-                ps.setString(3, sign);
+                Currency baseCurrency = transferData.base();
+                ps.setInt(1, baseCurrency.getId());
+                Currency targetCurrency = transferData.target();
+                ps.setInt(2, targetCurrency.getId());
+                double rate = transferData.rate();
+                ps.setDouble(3, rate);
                 ps.executeUpdate();
 
-                try (ResultSet addedCurrency = ps.getGeneratedKeys()) {
-                    if (addedCurrency.next()) {
-                        Currency currency = new Currency();
-                        currency.setId(addedCurrency.getInt(1));
-                        currency.setCode(code);
-                        currency.setFullName(name);
-                        currency.setSign(sign);
-                        return currency;
+                try (ResultSet resultSet = ps.getGeneratedKeys()) {
+                    if (resultSet.next()) {
+                        return new ExchangeRateTableProjection(
+                                resultSet.getInt("ID"),
+                                baseCurrency,
+                                targetCurrency,
+                                rate
+                        );
                     } else {
                         throw new InternalServerException("internal server error");
                     }
                 }
             }
         } catch (SQLiteException e) {
-            checkUniqueConstraint(e);
+            checkUniquePairConstraint(e);
             throw new InternalServerException("internal server error", e);
         } catch (SQLException e) {
             throw new InternalServerException("internal server error", e);
         }
     }
 
-    private void validateCurrencyCodeBefore(CurrencyReqDTO currencyReqDTO, Connection connection) throws SQLException {
-        try (PreparedStatement ps = connection.prepareStatement("select Code from Currencies where Code = ?")) {
-            ps.setString(1, currencyReqDTO.code());
-            try (ResultSet resultSet = ps.executeQuery()) {
-                if (resultSet.next()) {
-                    throw new CurrencyAlreadyExistsException("currency already exists");
-                }
-            }
+    private static void checkUniquePairConstraint(SQLiteException e) {
+        if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
+            throw new ExchangeRateAlreadyExistsException("this exchange pair already exists", e);
         }
     }
-
-    private static void checkUniqueConstraint(SQLiteException e) {
-        if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
-            throw new CurrencyAlreadyExistsException("currency already exists", e);
-        }
-    }*/
 }

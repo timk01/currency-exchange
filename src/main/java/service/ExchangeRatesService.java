@@ -1,27 +1,31 @@
 package service;
 
 import converter.Converter;
-import converter.CurrencyToCurrencyDTOConverter;
 import converter.ExchangeRateProjectionToExchangeRateRespDTOConverter;
-import dao.CurrenciesDAO;
+import dao.CurrencyDAO;
 import dao.ExchangeRatesDAO;
-import dto.request.CurrencyReqDTO;
+import dto.request.ExchangeRateReqDTO;
 import dto.responce.CurrencyRespDTO;
 import dto.responce.ExchangeRateRespDTO;
+import exception.CurrencyIsNotFoundException;
 import model.Currency;
+import model.ExchangeRate;
 import model.ExchangeRateTableProjection;
+import model.ExchangeRateTransfer;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExchangeRatesService {
 
+    private CurrencyDAO currencyDAO;
     private ExchangeRatesDAO exchangeRatesDAO;
     private Converter<ExchangeRateRespDTO, ExchangeRateTableProjection> converter;
 
     public ExchangeRatesService() {
         this.exchangeRatesDAO = new ExchangeRatesDAO();
         this.converter = new ExchangeRateProjectionToExchangeRateRespDTOConverter();
+        this.currencyDAO = new CurrencyDAO();
     }
 
     public List<ExchangeRateRespDTO> findAllExchangeRates() {
@@ -31,9 +35,13 @@ public class ExchangeRatesService {
                 .collect(Collectors.toList());
     }
 
-/*    public CurrencyRespDTO createCurrency(CurrencyReqDTO currencyReqDTO) {
-        Currency currency = currencyDAO.createCurrency(currencyReqDTO);
-        return converter.convert(currency);
-    }*/
+    public ExchangeRateRespDTO createExchangeRate(ExchangeRateReqDTO exchangeRate) {
+        Currency baseCurrency = currencyDAO.findCurrency(exchangeRate.baseCode());
+        Currency targetCurrency= currencyDAO.findCurrency(exchangeRate.targetCode());
 
+        ExchangeRateTableProjection rate = exchangeRatesDAO.createExchangeRate(
+                new ExchangeRateTransfer(baseCurrency, targetCurrency, exchangeRate.rate())
+        );
+        return converter.convert(rate);
+    }
 }
