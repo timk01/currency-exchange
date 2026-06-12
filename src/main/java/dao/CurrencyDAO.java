@@ -13,21 +13,12 @@ import java.util.List;
 
 public class CurrencyDAO {
 
-    private final String url;
-
     public CurrencyDAO() {
-        url = "jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db";
-
-        try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public List<Currency> findAll() {
         List<Currency> currencies = new ArrayList<>();
-        try (Connection connection = DriverManager.getConnection(url)) {
+        try (Connection connection = DBConnectionFactory.getConnection()) {
             try (PreparedStatement ps = connection.prepareStatement("select * from Currencies");
                  ResultSet resultSet = ps.executeQuery()) {
                 while (resultSet.next()) {
@@ -57,7 +48,7 @@ public class CurrencyDAO {
      * @throws InternalServerException        если произошла ошибка БД ИЛИ не удалось получить generated key
      */
     public Currency createCurrency(CurrencyReqDTO currencyReqDTO) {
-        try (Connection connection = DriverManager.getConnection(url)) {
+        try (Connection connection = DBConnectionFactory.getConnection()) {
 
             validateCurrencyCodeBefore(currencyReqDTO, connection);
 
