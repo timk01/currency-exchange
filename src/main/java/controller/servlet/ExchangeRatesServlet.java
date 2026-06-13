@@ -1,12 +1,9 @@
 package controller.servlet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.request.CurrencyReqDTO;
-import dto.request.ExchangeRateReqDTO;
-import dto.responce.CurrencyRespDTO;
+import dto.request.ExchangeRateCreateReqDTO;
 import dto.responce.ErrorResponseDTO;
 import dto.responce.ExchangeRateRespDTO;
-import exception.CurrencyAlreadyExistsException;
 import exception.CurrencyIsNotFoundException;
 import exception.ExchangeRateAlreadyExistsException;
 import exception.InternalServerException;
@@ -90,7 +87,7 @@ public class ExchangeRatesServlet extends HttpServlet {
 
         try {
             ExchangeRateRespDTO exchangeRate = exchangeRatesService.createExchangeRate(
-                    new ExchangeRateReqDTO(baseCode, targetCode, parsedRate)
+                    new ExchangeRateCreateReqDTO(baseCode, targetCode, parsedRate)
             );
             resp.setStatus(HttpServletResponse.SC_CREATED);
             String exchangeRates = objectMapper

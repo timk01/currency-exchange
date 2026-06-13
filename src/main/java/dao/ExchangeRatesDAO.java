@@ -1,6 +1,8 @@
 package dao;
 
+import dto.request.ExchangeRateCodePairDTO;
 import exception.ExchangeRateAlreadyExistsException;
+import exception.ExchangeRatePairDoesNotExistException;
 import exception.InternalServerException;
 import model.Currency;
 import model.ExchangeRateTableProjection;
@@ -13,14 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ExchangeRatesDAO {
-
-    public ExchangeRatesDAO() {
-    }
-
-    public List<ExchangeRateTableProjection> findAllExchangeRates() {
-        List<ExchangeRateTableProjection> exchangeRates = new ArrayList<>();
-        try (Connection connection = DBConnectionFactory.getConnection()) {
-            String query = """
+    private static final String SELECT_EXCHANGE_RATE_PROJECTION = """
                     SELECT ER.ID as ID,
                            ER.Rate as Rate,
                            baseCurrency.ID as base_id,
@@ -37,10 +32,17 @@ public class ExchangeRatesDAO {
                              JOIN Currencies as targetCurrency
                                   ON ER.TargetCurrencyId = targetCurrency.ID
                     """;
-            try (PreparedStatement ps = connection.prepareStatement(query)) {
+
+    public ExchangeRatesDAO() {
+    }
+
+    public List<ExchangeRateTableProjection> findAllExchangeRates() {
+        List<ExchangeRateTableProjection> exchangeRates = new ArrayList<>();
+        try (Connection connection = DBConnectionFactory.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(SELECT_EXCHANGE_RATE_PROJECTION)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
                     while (resultSet.next()) {
-                        fillExchangeRates(exchangeRates, resultSet);
+                        exchangeRates.add(fillExchangeRates(resultSet));
                     }
                 }
             }
@@ -50,25 +52,42 @@ public class ExchangeRatesDAO {
         return exchangeRates;
     }
 
-    private void fillExchangeRates(List<ExchangeRateTableProjection> exchangeRates,
-                                   ResultSet resultSet) throws SQLException {
-        exchangeRates.add(
-                new ExchangeRateTableProjection(
-                        resultSet.getInt("ID"),
-                        new Currency(
-                                resultSet.getInt("base_id"),
-                                resultSet.getString("base_code"),
-                                resultSet.getString("base_name"),
-                                resultSet.getString("base_sign")
-                        ),
-                        new Currency(
-                                resultSet.getInt("target_id"),
-                                resultSet.getString("target_code"),
-                                resultSet.getString("target_name"),
-                                resultSet.getString("target_sign")
-                        ),
-                        resultSet.getDouble("Rate")
-                )
+    public ExchangeRateTableProjection findExchangeRatePair(ExchangeRateCodePairDTO pair) {
+        try (Connection connection = DBConnectionFactory.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    SELECT_EXCHANGE_RATE_PROJECTION + "WHERE baseCurrency.Code = ? AND targetCurrency.Code = ?")
+            ) {
+                ps.setString(1, pair.baseCode());
+                ps.setString(2, pair.targetCode());
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    if (resultSet.next()) {
+                        return fillExchangeRates(resultSet);
+                    } else {
+                        throw new ExchangeRatePairDoesNotExistException("the following pair is not found: " + pair.baseCode() + pair.targetCode());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new InternalServerException("internal server error", e);
+        }
+    }
+
+    private ExchangeRateTableProjection fillExchangeRates(ResultSet resultSet) throws SQLException {
+        return new ExchangeRateTableProjection(
+                resultSet.getInt("ID"),
+                new Currency(
+                        resultSet.getInt("base_id"),
+                        resultSet.getString("base_code"),
+                        resultSet.getString("base_name"),
+                        resultSet.getString("base_sign")
+                ),
+                new Currency(
+                        resultSet.getInt("target_id"),
+                        resultSet.getString("target_code"),
+                        resultSet.getString("target_name"),
+                        resultSet.getString("target_sign")
+                ),
+                resultSet.getDouble("Rate")
         );
     }
 
@@ -107,7 +126,7 @@ public class ExchangeRatesDAO {
         }
     }
 
-    private static void checkUniquePairConstraint(SQLiteException e) {
+    private void checkUniquePairConstraint(SQLiteException e) {
         if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
             throw new ExchangeRateAlreadyExistsException("this exchange pair already exists", e);
         }
