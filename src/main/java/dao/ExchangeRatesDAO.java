@@ -13,6 +13,7 @@ import org.sqlite.SQLiteException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ExchangeRatesDAO {
     private static final String SELECT_EXCHANGE_RATE_PROJECTION = """
@@ -54,6 +55,28 @@ public class ExchangeRatesDAO {
 
     public ExchangeRateTableProjection findExchangeRatePair(ExchangeRateCodePairDTO pair) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
+            return getRequiredExchangeRateTableProjection(pair, connection);
+        } catch (SQLException e) {
+            throw new InternalServerException("internal server error", e);
+        }
+    }
+
+    private ExchangeRateTableProjection getRequiredExchangeRateTableProjection(
+            ExchangeRateCodePairDTO pair,
+            Connection connection
+    ) throws SQLException {
+        Optional<ExchangeRateTableProjection> exchangeRateTableProjection =
+                getExchangeRateTableProjection(pair, connection);
+        if (exchangeRateTableProjection.isPresent()) {
+            return exchangeRateTableProjection.get();
+        }
+        throw new ExchangeRatePairDoesNotExistException(
+                "the following pair is not found: " + pair.baseCode() + pair.targetCode()
+        );
+    }
+
+    public Optional<ExchangeRateTableProjection> optionalFindExchangeRatePair(ExchangeRateCodePairDTO pair) {
+        try (Connection connection = DBConnectionFactory.getConnection()) {
             return getExchangeRateTableProjection(pair, connection);
         } catch (SQLException e) {
             throw new InternalServerException("internal server error", e);
@@ -75,7 +98,7 @@ public class ExchangeRatesDAO {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                ExchangeRateTableProjection foundPair = getExchangeRateTableProjection(pair, connection);
+                ExchangeRateTableProjection foundPair = getRequiredExchangeRateTableProjection(pair, connection);
                 try (PreparedStatement ps = connection.prepareStatement(
                         """
                                 UPDATE ExchangeRates
@@ -108,7 +131,7 @@ public class ExchangeRatesDAO {
         }
     }
 
-    private ExchangeRateTableProjection getExchangeRateTableProjection(ExchangeRateCodePairDTO pair, Connection connection) throws SQLException {
+    private Optional<ExchangeRateTableProjection> getExchangeRateTableProjection(ExchangeRateCodePairDTO pair, Connection connection) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
                 SELECT_EXCHANGE_RATE_PROJECTION + "WHERE baseCurrency.Code = ? AND targetCurrency.Code = ?")
         ) {
@@ -116,9 +139,9 @@ public class ExchangeRatesDAO {
             ps.setString(2, pair.targetCode());
             try (ResultSet resultSet = ps.executeQuery()) {
                 if (resultSet.next()) {
-                    return fillExchangeRates(resultSet);
+                    return Optional.of(fillExchangeRates(resultSet));
                 } else {
-                    throw new ExchangeRatePairDoesNotExistException("the following pair is not found: " + pair.baseCode() + pair.targetCode());
+                    return Optional.empty();
                 }
             }
         }
@@ -160,7 +183,7 @@ public class ExchangeRatesDAO {
                 try (ResultSet resultSet = ps.getGeneratedKeys()) {
                     if (resultSet.next()) {
                         return new ExchangeRateTableProjection(
-                                resultSet.getInt("ID"),
+                                resultSet.getInt(1),
                                 baseCurrency,
                                 targetCurrency,
                                 rate
