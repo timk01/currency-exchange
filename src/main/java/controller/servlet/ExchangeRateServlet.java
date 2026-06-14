@@ -114,8 +114,50 @@ public class ExchangeRateServlet extends HttpServlet {
         resp.getWriter().write(errorJson);
     }
 
-    protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, double rate) {
-        System.out.println("rate afte parse: " + rate);
+    protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, double rate) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String rawCodesPair = req.getPathInfo();
+
+        if (hasMissingCode(rawCodesPair)) {
+            sendBadRequest(resp, objectMapper);
+            return;
+        }
+
+        String cleanCodesPair = rawCodesPair.substring(1);
+        if (cleanCodesPair.length() != PROPER_CODES_LENGTH) {
+            sendBadRequest(resp, objectMapper);
+            return;
+        }
+
+        try {
+            ExchangeRateRespDTO pair = service.updateExchangeRatePairRate(
+                    new ExchangeRateCodePairDTO(cleanCodesPair.substring(0, PROPER_CODES_LENGTH / 2),
+                            cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH)
+                    ),
+                    rate
+            );
+            resp.setStatus(HttpServletResponse.SC_OK);
+            String currencyJson = objectMapper
+                    .writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(pair);
+
+            resp.getWriter().write(currencyJson);
+        } catch (ExchangeRatePairDoesNotExistException e) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            String errorJson = objectMapper.writeValueAsString(
+                    new ErrorResponseDTO(e.getMessage())
+            );
+
+            resp.getWriter().write(errorJson);
+        } catch (
+                InternalServerException e) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            String errorJson = objectMapper.writeValueAsString(
+                    new ErrorResponseDTO(e.getMessage())
+            );
+
+            resp.getWriter().write(errorJson);
+        }
     }
 
     @Override
@@ -123,8 +165,8 @@ public class ExchangeRateServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json; charset=UTF-8");
 
-        String rawCodesPair = req.getPathInfo();
         ObjectMapper objectMapper = new ObjectMapper();
+        String rawCodesPair = req.getPathInfo();
 
         if (hasMissingCode(rawCodesPair)) {
             sendBadRequest(resp, objectMapper);

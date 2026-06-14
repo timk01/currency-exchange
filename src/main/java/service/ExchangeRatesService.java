@@ -37,14 +37,19 @@ public class ExchangeRatesService {
         Currency baseCurrency = currencyDAO.findCurrency(exchangeRate.baseCode());
         Currency targetCurrency= currencyDAO.findCurrency(exchangeRate.targetCode());
 
-        ExchangeRateTableProjection rate = exchangeRatesDAO.createExchangeRate(
+        ExchangeRateTableProjection createdResult = exchangeRatesDAO.createExchangeRate(
                 new ExchangeRateTransfer(baseCurrency, targetCurrency, exchangeRate.rate())
         );
-        return converter.convert(rate);
+        return converter.convert(createdResult);
     }
 
     public ExchangeRateRespDTO findExchangeRatePair(ExchangeRateCodePairDTO pair) {
-        ExchangeRateTableProjection rate = exchangeRatesDAO.findExchangeRatePair(pair);
-        return converter.convert(rate);
+        ExchangeRateTableProjection foundResult = exchangeRatesDAO.findExchangeRatePair(pair);
+        return converter.convert(foundResult);
+    }
+
+    public ExchangeRateRespDTO updateExchangeRatePairRate(ExchangeRateCodePairDTO pair, double rate) {
+        ExchangeRateTableProjection updatedResult = exchangeRatesDAO.updateExchangeRatePairRate(pair, rate);
+        return converter.convert(updatedResult);
     }
 }
