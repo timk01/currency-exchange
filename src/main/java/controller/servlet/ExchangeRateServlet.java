@@ -17,6 +17,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @WebServlet(urlPatterns = "/exchangeRate/*")
 public class ExchangeRateServlet extends HttpServlet {
@@ -48,15 +50,15 @@ public class ExchangeRateServlet extends HttpServlet {
             return;
         }
 
-        double parsedRate;
+        BigDecimal normalizedRate;
         try {
-            parsedRate = parseRateFromPatchBody(body);
+            normalizedRate = parseRateFromPatchBody(body);
         } catch (IllegalArgumentException e) {
             sendInvalidRateBadRequest(resp, objectMapper);
             return;
         }
 
-        doCustomPatch(req, resp, parsedRate);
+        doCustomPatch(req, resp, normalizedRate);
     }
 
     private String readMethodBody(HttpServletRequest req) throws IOException {
@@ -70,7 +72,7 @@ public class ExchangeRateServlet extends HttpServlet {
         }
     }
 
-    private double parseRateFromPatchBody(String body) {
+    private BigDecimal parseRateFromPatchBody(String body) {
         String[] split = body.split("=", 2);
 
         if (split.length != 2) {
@@ -86,13 +88,12 @@ public class ExchangeRateServlet extends HttpServlet {
             throw new IllegalArgumentException();
         }
 
-        double parsedRate = Double.parseDouble(rate);
-
-        if (parsedRate <= 0) {
+        BigDecimal normalizedRate = new BigDecimal(rate).setScale(6, RoundingMode.HALF_UP);
+        if (normalizedRate.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException();
         }
 
-        return parsedRate;
+        return normalizedRate;
     }
 
     private static void sendBadRequestForMissedBody(HttpServletResponse resp, ObjectMapper objectMapper) throws
@@ -114,7 +115,7 @@ public class ExchangeRateServlet extends HttpServlet {
         resp.getWriter().write(errorJson);
     }
 
-    protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, double rate) throws IOException {
+    protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, BigDecimal rate) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         String rawCodesPair = req.getPathInfo();
 

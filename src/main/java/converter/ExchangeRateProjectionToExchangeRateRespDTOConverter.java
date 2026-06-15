@@ -3,6 +3,9 @@ package converter;
 import dto.responce.ExchangeRateRespDTO;
 import model.ExchangeRateTableProjection;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 public class ExchangeRateProjectionToExchangeRateRespDTOConverter
         implements Converter<ExchangeRateRespDTO, ExchangeRateTableProjection> {
 
@@ -18,7 +21,7 @@ public class ExchangeRateProjectionToExchangeRateRespDTOConverter
                 rate.id(),
                 currencyToCurrencyDTOConverter.convert(rate.baseCurrency()),
                 currencyToCurrencyDTOConverter.convert(rate.targetCurrency()),
-                rate.rate()
+                BigDecimal.valueOf(rate.rate()).setScale(6, RoundingMode.HALF_UP)
         );
     }
 }

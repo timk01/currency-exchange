@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @WebServlet(urlPatterns = "/exchangeRates")
@@ -74,12 +76,13 @@ public class ExchangeRatesServlet extends HttpServlet {
             return;
         }
 
-        double parsedRate;
+        BigDecimal normalizedRate;
         try {
-            parsedRate = Double.parseDouble(rate);
-            if (parsedRate <= 0) {
+            normalizedRate = new BigDecimal(rate).setScale(6, RoundingMode.HALF_UP);
+            if (normalizedRate.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new NumberFormatException();
             }
+
         } catch (NumberFormatException e) {
             sendInvalidRateBadRequest(resp, objectMapper);
             return;
@@ -87,7 +90,9 @@ public class ExchangeRatesServlet extends HttpServlet {
 
         try {
             ExchangeRateRespDTO exchangeRate = exchangeRatesService.createExchangeRate(
-                    new ExchangeRateCreateReqDTO(baseCode, targetCode, parsedRate)
+                    new ExchangeRateCreateReqDTO(
+                            baseCode, targetCode, normalizedRate
+                    )
             );
             resp.setStatus(HttpServletResponse.SC_CREATED);
             String exchangeRates = objectMapper

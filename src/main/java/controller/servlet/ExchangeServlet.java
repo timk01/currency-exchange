@@ -40,15 +40,9 @@ public class ExchangeServlet extends HttpServlet {
             return;
         }
 
-        //спорный кейс ?
-/*        if (baseCode.equals(targetCode)) {
-            sendSameCurrencyPairBadRequest(resp, objectMapper);
-            return;
-        }*/
-
         BigDecimal parsedAmount;
         try {
-            parsedAmount = new BigDecimal(amount)/*.setScale(6, RoundingMode.HALF_UP)*/;
+            parsedAmount = new BigDecimal(amount);
             if (parsedAmount.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new NumberFormatException();
             }

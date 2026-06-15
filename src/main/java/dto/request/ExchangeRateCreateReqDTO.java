@@ -1,4 +1,6 @@
 package dto.request;
 
-public record ExchangeRateCreateReqDTO(String baseCode, String targetCode, double rate) {
+import java.math.BigDecimal;
+
+public record ExchangeRateCreateReqDTO(String baseCode, String targetCode, BigDecimal rate) {
 }

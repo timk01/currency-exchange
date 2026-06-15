@@ -11,6 +11,8 @@ import model.Currency;
 import model.ExchangeRateTableProjection;
 import model.ExchangeRateTransfer;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,7 +40,11 @@ public class ExchangeRatesService {
         Currency targetCurrency= currencyDAO.findCurrency(exchangeRate.targetCode());
 
         ExchangeRateTableProjection createdResult = exchangeRatesDAO.createExchangeRate(
-                new ExchangeRateTransfer(baseCurrency, targetCurrency, exchangeRate.rate())
+                new ExchangeRateTransfer(
+                        baseCurrency,
+                        targetCurrency,
+                        exchangeRate.rate().doubleValue()
+                )
         );
         return converter.convert(createdResult);
     }
@@ -48,8 +54,10 @@ public class ExchangeRatesService {
         return converter.convert(foundResult);
     }
 
-    public ExchangeRateRespDTO updateExchangeRatePairRate(ExchangeRateCodePairDTO pair, double rate) {
-        ExchangeRateTableProjection updatedResult = exchangeRatesDAO.updateExchangeRatePairRate(pair, rate);
+    public ExchangeRateRespDTO updateExchangeRatePairRate(ExchangeRateCodePairDTO pair, BigDecimal rate) {
+        ExchangeRateTableProjection updatedResult = exchangeRatesDAO.updateExchangeRatePairRate(
+                pair, rate.doubleValue()
+        );
         return converter.convert(updatedResult);
     }
 }
