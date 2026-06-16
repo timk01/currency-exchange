@@ -1,5 +1,6 @@
 package controller.servlet;
 
+import controller.servlet.util.ValidationsUtil;
 import dto.request.ExchangeRateCodePairDTO;
 import dto.responce.ExchangeRateRespDTO;
 import exception.ExchangeRatePairDoesNotExistException;
@@ -139,7 +140,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
     private String resolveCleanPairCode(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String rawCodesPair = req.getPathInfo();
 
-        if (hasMissingCode(rawCodesPair)) {
+        if (ValidationsUtil.hasMissingPathInfo(rawCodesPair)) {
             doWriteError(
                     resp,
                     "Currency pair code (one or both) is not provided",
@@ -149,7 +150,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
         }
 
         String cleanCodesPair = rawCodesPair.substring(1);
-        if (hasWrongCodePairLength(cleanCodesPair)) {
+        if (ValidationsUtil.hasLengthNotEqualToExpected(cleanCodesPair, PROPER_CODES_LENGTH)) {
             doWriteError(
                     resp,
                     "Currency pair code has wrong length",
@@ -158,13 +159,5 @@ public class ExchangeRateServlet extends BaseApiServlet {
             return null;
         }
         return cleanCodesPair;
-    }
-
-    private boolean hasWrongCodePairLength(String cleanCodesPair) {
-        return cleanCodesPair.length() != PROPER_CODES_LENGTH;
-    }
-
-    private boolean hasMissingCode(String code) {
-        return code == null || "/".equals(code);
     }
 }

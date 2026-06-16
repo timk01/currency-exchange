@@ -1,5 +1,6 @@
 package controller.servlet;
 
+import controller.servlet.util.ValidationsUtil;
 import dto.request.ExchangeRequestDTO;
 import dto.responce.ExchangeRateExtendedRespDTO;
 import exception.CrossCourseNotFoundException;
@@ -26,7 +27,7 @@ public class ExchangeServlet extends BaseApiServlet {
         String targetCode = req.getParameter("to");
         String amount = req.getParameter("amount");
 
-        if (hasMissingRequiredFields(baseCode, targetCode, amount)) {
+        if (ValidationsUtil.hasMissingRequiredFields(baseCode, targetCode, amount)) {
             doWriteError(
                     resp,
                     "Required field(s) is/are missing",
@@ -60,11 +61,5 @@ public class ExchangeServlet extends BaseApiServlet {
         } catch (InternalServerException e) {
             doWrite500Error(resp, e);
         }
-    }
-
-    private boolean hasMissingRequiredFields(String baseCode, String targetCode, String amount) {
-        return baseCode == null || baseCode.isBlank()
-                || targetCode == null || targetCode.isBlank()
-                || amount == null || amount.isBlank();
     }
 }

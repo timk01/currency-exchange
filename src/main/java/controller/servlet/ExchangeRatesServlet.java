@@ -1,5 +1,6 @@
 package controller.servlet;
 
+import controller.servlet.util.ValidationsUtil;
 import dto.request.ExchangeRateCreateReqDTO;
 import dto.responce.ExchangeRateRespDTO;
 import exception.CurrencyIsNotFoundException;
@@ -40,7 +41,7 @@ public class ExchangeRatesServlet extends BaseApiServlet {
         String targetCode = req.getParameter("targetCurrencyCode");
         String rate = req.getParameter("rate");
 
-        if (hasMissingRequiredFields(baseCode, targetCode, rate)) {
+        if (ValidationsUtil.hasMissingRequiredFields(baseCode, targetCode, rate)) {
             doWriteError(resp,
                     "Required field(s) is/are missing",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -85,11 +86,5 @@ public class ExchangeRatesServlet extends BaseApiServlet {
         } catch (InternalServerException e) {
             doWrite500Error(resp, e);
         }
-    }
-
-    private boolean hasMissingRequiredFields(String baseCode, String targetCode, String rate) {
-        return baseCode == null || baseCode.isBlank()
-                || targetCode == null || targetCode.isBlank()
-                || rate == null || rate.isBlank();
     }
 }

@@ -1,5 +1,6 @@
 package controller.servlet;
 
+import controller.servlet.util.ValidationsUtil;
 import dto.request.CurrencyReqDTO;
 import dto.responce.CurrencyRespDTO;
 import exception.CurrencyAlreadyExistsException;
@@ -38,7 +39,7 @@ public class CurrenciesServlet extends BaseApiServlet {
         String code = req.getParameter("code");
         String sign = req.getParameter("sign");
 
-        if (hasMissingRequiredFields(name, code, sign)) {
+        if (ValidationsUtil.hasMissingRequiredFields(name, code, sign)) {
             doWriteError(
                     resp,
                     "required field(s) is/are missing",
@@ -47,7 +48,7 @@ public class CurrenciesServlet extends BaseApiServlet {
             return;
         }
 
-        if (hasWrongSignLength(sign)) {
+        if (ValidationsUtil.hasLengthMoreThanExpected(sign, MAX_SIGN_LENGTH)) {
             doWriteError(
                     resp,
                     "sign has wrong length",
@@ -64,15 +65,5 @@ public class CurrenciesServlet extends BaseApiServlet {
         } catch (InternalServerException e) {
             doWrite500Error(resp, e);
         }
-    }
-
-    private boolean hasMissingRequiredFields(String name, String code, String sign) {
-        return name == null || name.isBlank()
-                || code == null || code.isBlank()
-                || sign == null || sign.isBlank();
-    }
-
-    private boolean hasWrongSignLength(String sign) {
-        return sign.length() > MAX_SIGN_LENGTH;
     }
 }

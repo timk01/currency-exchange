@@ -1,5 +1,6 @@
 package controller.servlet;
 
+import controller.servlet.util.ValidationsUtil;
 import dto.responce.CurrencyRespDTO;
 import exception.CurrencyIsNotFoundException;
 import exception.InternalServerException;
@@ -23,7 +24,7 @@ public class CurrencyServlet extends BaseApiServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String rawCode = req.getPathInfo();
 
-        if (hasMissingCode(rawCode)) {
+        if (ValidationsUtil.hasMissingPathInfo(rawCode)) {
             doWriteError(
                     resp,
                     "Currency code is not provided",
@@ -40,9 +41,5 @@ public class CurrencyServlet extends BaseApiServlet {
         } catch (InternalServerException e) {
             doWrite500Error(resp, e);
         }
-    }
-
-    private boolean hasMissingCode(String code) {
-        return code == null || "/".equals(code);
     }
 }
