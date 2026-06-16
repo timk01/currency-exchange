@@ -1,8 +1,6 @@
 package controller.servlet;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.request.ExchangeRateCreateReqDTO;
-import dto.responce.ErrorResponseDTO;
 import dto.responce.ExchangeRateRespDTO;
 import exception.CurrencyIsNotFoundException;
 import exception.ExchangeRateAlreadyExistsException;
@@ -10,7 +8,6 @@ import exception.InternalServerException;
 import service.ExchangeRatesService;
 
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -19,9 +16,9 @@ import java.math.RoundingMode;
 import java.util.List;
 
 @WebServlet(urlPatterns = "/exchangeRates")
-public class ExchangeRatesServlet extends HttpServlet {
+public class ExchangeRatesServlet extends BaseApiServlet {
 
-    private ExchangeRatesService exchangeRatesService;
+    private final ExchangeRatesService exchangeRatesService;
 
     public ExchangeRatesServlet() {
         this.exchangeRatesService = new ExchangeRatesService();
@@ -29,47 +26,33 @@ public class ExchangeRatesServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
         try {
             List<ExchangeRateRespDTO> rates = exchangeRatesService.findAllExchangeRates();
-            resp.setStatus(HttpServletResponse.SC_OK);
-            String currenciesJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(rates);
-
-            resp.getWriter().write(currenciesJson);
+            doWriteResponse(resp, rates, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWrite500Error(resp, e);
         }
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        req.setCharacterEncoding("UTF-8");
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=UTF-8");
-
         String baseCode = req.getParameter("baseCurrencyCode");
-        System.out.println(baseCode);
         String targetCode = req.getParameter("targetCurrencyCode");
-        System.out.println(targetCode);
         String rate = req.getParameter("rate");
-        System.out.println(rate);
-
-        ObjectMapper objectMapper = new ObjectMapper();
 
         if (hasMissingRequiredFields(baseCode, targetCode, rate)) {
-            sendMissingFieldsBadRequest(resp, objectMapper);
+            doWriteError(resp,
+                    "Required field(s) is/are missing",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
         if (baseCode.equals(targetCode)) {
-            sendSameCurrencyPairBadRequest(resp, objectMapper);
+            doWriteError(resp,
+                    "baseCode and targetCode should be different",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
@@ -81,7 +64,10 @@ public class ExchangeRatesServlet extends HttpServlet {
             }
 
         } catch (NumberFormatException e) {
-            sendInvalidRateBadRequest(resp, objectMapper);
+            doWriteError(resp,
+                    "Invalid rate",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
@@ -91,32 +77,13 @@ public class ExchangeRatesServlet extends HttpServlet {
                             baseCode, targetCode, normalizedRate
                     )
             );
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            String exchangeRates = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(exchangeRate);
-            resp.getWriter().write(exchangeRates);
+            doWriteResponse(resp, exchangeRate, HttpServletResponse.SC_CREATED);
         } catch (CurrencyIsNotFoundException e) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (ExchangeRateAlreadyExistsException e) {
-            resp.setStatus(HttpServletResponse.SC_CONFLICT);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
         } catch (InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWrite500Error(resp, e);
         }
     }
 
@@ -124,32 +91,5 @@ public class ExchangeRatesServlet extends HttpServlet {
         return baseCode == null || baseCode.isBlank()
                 || targetCode == null || targetCode.isBlank()
                 || rate == null || rate.isBlank();
-    }
-
-    private void sendInvalidRateBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Invalid rate")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
-    private void sendMissingFieldsBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Required field(s) is/are missing")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
-    private void sendSameCurrencyPairBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("baseCode and targetCode should be different")
-        );
-
-        resp.getWriter().write(errorJson);
     }
 }

@@ -1,25 +1,22 @@
 package controller.servlet;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.request.CurrencyReqDTO;
 import dto.responce.CurrencyRespDTO;
-import dto.responce.ErrorResponseDTO;
 import exception.CurrencyAlreadyExistsException;
 import exception.InternalServerException;
 import service.CurrenciesService;
 
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
 @WebServlet(urlPatterns = "/currencies")
-public class CurrenciesServlet extends HttpServlet {
+public class CurrenciesServlet extends BaseApiServlet {
     private final static int MAX_SIGN_LENGTH = 3;
 
-    private CurrenciesService currencyService;
+    private final CurrenciesService currencyService;
 
     public CurrenciesServlet() {
         this.currencyService = new CurrenciesService();
@@ -27,21 +24,11 @@ public class CurrenciesServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
         try {
             List<CurrencyRespDTO> allCurrencies = currencyService.findAllCurrencies();
-            String currenciesJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(allCurrencies);
-
-            resp.getWriter().write(currenciesJson);
+            doWriteResponse(resp, allCurrencies, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWrite500Error(resp, e);
         }
     }
 
@@ -51,39 +38,31 @@ public class CurrenciesServlet extends HttpServlet {
         String code = req.getParameter("code");
         String sign = req.getParameter("sign");
 
-        ObjectMapper objectMapper = new ObjectMapper();
-
         if (hasMissingRequiredFields(name, code, sign)) {
-            sendBadRequest(resp, objectMapper);
+            doWriteError(
+                    resp,
+                    "required field(s) is/are missing",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
         if (hasWrongSignLength(sign)) {
-            sendBadCodeLengthRequest(resp, objectMapper);
+            doWriteError(
+                    resp,
+                    "sign has wrong length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
         try {
             CurrencyRespDTO currency = currencyService.createCurrency(new CurrencyReqDTO(name, code, sign));
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            String currencyJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(currency);
-            resp.getWriter().write(currencyJson);
+            doWriteResponse(resp, currency, HttpServletResponse.SC_CREATED);
         } catch (CurrencyAlreadyExistsException e) {
-            resp.setStatus(HttpServletResponse.SC_CONFLICT);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
         } catch (InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWrite500Error(resp, e);
         }
     }
 
@@ -93,25 +72,7 @@ public class CurrenciesServlet extends HttpServlet {
                 || sign == null || sign.isBlank();
     }
 
-    private void sendBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Required field(s) is/are missing")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
     private boolean hasWrongSignLength(String sign) {
         return sign.length() > MAX_SIGN_LENGTH;
-    }
-
-    private void sendBadCodeLengthRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("sign has wrong length")
-        );
-
-        resp.getWriter().write(errorJson);
     }
 }

@@ -1,8 +1,6 @@
 package controller.servlet;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.request.ExchangeRateCodePairDTO;
-import dto.responce.ErrorResponseDTO;
 import dto.responce.ExchangeRateRespDTO;
 import exception.ExchangeRatePairDoesNotExistException;
 import exception.InternalServerException;
@@ -10,7 +8,6 @@ import service.ExchangeRatesService;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
@@ -19,7 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @WebServlet(urlPatterns = "/exchangeRate/*")
-public class ExchangeRateServlet extends HttpServlet {
+public class ExchangeRateServlet extends BaseApiServlet {
     private final static int PROPER_CODES_LENGTH = 6;
     private final static String RATE = "rate";
 
@@ -36,12 +33,14 @@ public class ExchangeRateServlet extends HttpServlet {
             return;
         }
 
-        ObjectMapper objectMapper = new ObjectMapper();
-
         String body = readMethodBody(req);
 
         if (body.isBlank()) {
-            sendBadRequestForMissedBody(resp, objectMapper);
+            doWriteError(
+                    resp,
+                    "method body is empty",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
@@ -49,7 +48,11 @@ public class ExchangeRateServlet extends HttpServlet {
         try {
             normalizedRate = parseRateFromPatchBody(body);
         } catch (IllegalArgumentException e) {
-            sendInvalidRateBadRequest(resp, objectMapper);
+            doWriteError(
+                    resp,
+                    "invalid/missing rate",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
             return;
         }
 
@@ -91,37 +94,9 @@ public class ExchangeRateServlet extends HttpServlet {
         return normalizedRate;
     }
 
-    private void sendBadRequestForMissedBody(HttpServletResponse resp, ObjectMapper objectMapper) throws
-            IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("method body is empty")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
-    private void sendInvalidRateBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Invalid/missing rate")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
     protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, BigDecimal rate) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String rawCodesPair = req.getPathInfo();
-
-        if (hasMissingCode(rawCodesPair)) {
-            sendBadPairCodeRequest(resp, objectMapper);
-            return;
-        }
-
-        String cleanCodesPair = rawCodesPair.substring(1);
-        if (hasWrongCodePairLength(cleanCodesPair)) {
-            sendBadSignLengthRequest(resp, objectMapper);
+        String cleanCodesPair = resolveCleanPairCode(req, resp);
+        if (cleanCodesPair == null) {
             return;
         }
 
@@ -132,43 +107,18 @@ public class ExchangeRateServlet extends HttpServlet {
                     ),
                     rate
             );
-            resp.setStatus(HttpServletResponse.SC_OK);
-            String currencyJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(pair);
-
-            resp.getWriter().write(currencyJson);
+            doWriteResponse(resp, pair, HttpServletResponse.SC_OK);
         } catch (ExchangeRatePairDoesNotExistException e) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
-        } catch (
-                InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+        } catch (InternalServerException e) {
+            doWrite500Error(resp, e);
         }
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String rawCodesPair = req.getPathInfo();
-
-        if (hasMissingCode(rawCodesPair)) {
-            sendBadPairCodeRequest(resp, objectMapper);
-            return;
-        }
-
-        String cleanCodesPair = rawCodesPair.substring(1);
-        if (hasWrongCodePairLength(cleanCodesPair)) {
-            sendBadSignLengthRequest(resp, objectMapper);
+        String cleanCodesPair = resolveCleanPairCode(req, resp);
+        if (cleanCodesPair == null) {
             return;
         }
 
@@ -178,29 +128,36 @@ public class ExchangeRateServlet extends HttpServlet {
                             cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH)
                     )
             );
-            resp.setStatus(HttpServletResponse.SC_OK);
-            String currencyJson = objectMapper
-                    .writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(pair);
-
-            resp.getWriter().write(currencyJson);
-        } catch (
-                ExchangeRatePairDoesNotExistException e) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
-        } catch (
-                InternalServerException e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorJson = objectMapper.writeValueAsString(
-                    new ErrorResponseDTO(e.getMessage())
-            );
-
-            resp.getWriter().write(errorJson);
+            doWriteResponse(resp, pair, HttpServletResponse.SC_OK);
+        } catch (ExchangeRatePairDoesNotExistException e) {
+            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+        } catch (InternalServerException e) {
+            doWrite500Error(resp, e);
         }
+    }
+
+    private String resolveCleanPairCode(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String rawCodesPair = req.getPathInfo();
+
+        if (hasMissingCode(rawCodesPair)) {
+            doWriteError(
+                    resp,
+                    "Currency pair code (one or both) is not provided",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return null;
+        }
+
+        String cleanCodesPair = rawCodesPair.substring(1);
+        if (hasWrongCodePairLength(cleanCodesPair)) {
+            doWriteError(
+                    resp,
+                    "Currency pair code has wrong length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return null;
+        }
+        return cleanCodesPair;
     }
 
     private boolean hasWrongCodePairLength(String cleanCodesPair) {
@@ -209,23 +166,5 @@ public class ExchangeRateServlet extends HttpServlet {
 
     private boolean hasMissingCode(String code) {
         return code == null || "/".equals(code);
-    }
-
-    private void sendBadPairCodeRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Currency pair code (one or both) is not provided")
-        );
-
-        resp.getWriter().write(errorJson);
-    }
-
-    private void sendBadSignLengthRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO("Currency pair code has wrong length")
-        );
-
-        resp.getWriter().write(errorJson);
     }
 }

@@ -6,12 +6,6 @@ import java.io.IOException;
 
 @WebFilter("/*")
 public class ApiFilter implements Filter {
-
-    @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-        Filter.super.init(filterConfig);
-    }
-
     @Override
     public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
             throws IOException, ServletException {
@@ -20,10 +14,5 @@ public class ApiFilter implements Filter {
         resp.setContentType("application/json; charset=UTF-8");
 
         chain.doFilter(req, resp);
-    }
-
-    @Override
-    public void destroy() {
-        Filter.super.destroy();
     }
 }
