@@ -36,8 +36,6 @@ public class ExchangeRateServlet extends HttpServlet {
             return;
         }
 
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=UTF-8");
         ObjectMapper objectMapper = new ObjectMapper();
 
         String body = readMethodBody(req);
@@ -160,9 +158,6 @@ public class ExchangeRateServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=UTF-8");
-
         ObjectMapper objectMapper = new ObjectMapper();
         String rawCodesPair = req.getPathInfo();
 
