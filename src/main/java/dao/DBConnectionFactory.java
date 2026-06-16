@@ -6,8 +6,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public final class DBConnectionFactory {
-
-    private static final String URL = "jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db";
+    private static final String URL = "jdbc:sqlite:/opt/tomcat/data/currency_exchange.db";
 
     static {
         try {

@@ -17,6 +17,7 @@ import java.util.List;
 
 @WebServlet(urlPatterns = "/currencies")
 public class CurrenciesServlet extends HttpServlet {
+    private final static int MAX_SIGN_LENGTH = 3;
 
     private CurrenciesService currencyService;
 
@@ -64,6 +65,11 @@ public class CurrenciesServlet extends HttpServlet {
             return;
         }
 
+        if (hasWrongSignLength(sign)) {
+            sendBadCodeLengthRequest(resp, objectMapper);
+            return;
+        }
+
         try {
             CurrencyRespDTO currency = currencyService.createCurrency(new CurrencyReqDTO(name, code, sign));
             resp.setStatus(HttpServletResponse.SC_CREATED);
@@ -98,6 +104,19 @@ public class CurrenciesServlet extends HttpServlet {
         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         String errorJson = objectMapper.writeValueAsString(
                 new ErrorResponseDTO("Required field(s) is/are missing")
+        );
+
+        resp.getWriter().write(errorJson);
+    }
+
+    private boolean hasWrongSignLength(String sign) {
+        return sign.length() > MAX_SIGN_LENGTH;
+    }
+
+    private void sendBadCodeLengthRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
+        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        String errorJson = objectMapper.writeValueAsString(
+                new ErrorResponseDTO("sign has wrong length")
         );
 
         resp.getWriter().write(errorJson);

@@ -9,8 +9,6 @@ import exception.InternalServerException;
 import service.ExchangeRatesService;
 
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -22,7 +20,6 @@ import java.math.RoundingMode;
 
 @WebServlet(urlPatterns = "/exchangeRate/*")
 public class ExchangeRateServlet extends HttpServlet {
-
     private final static int PROPER_CODES_LENGTH = 6;
     private final static String RATE = "rate";
 
@@ -96,7 +93,7 @@ public class ExchangeRateServlet extends HttpServlet {
         return normalizedRate;
     }
 
-    private static void sendBadRequestForMissedBody(HttpServletResponse resp, ObjectMapper objectMapper) throws
+    private void sendBadRequestForMissedBody(HttpServletResponse resp, ObjectMapper objectMapper) throws
             IOException {
         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         String errorJson = objectMapper.writeValueAsString(
@@ -120,13 +117,13 @@ public class ExchangeRateServlet extends HttpServlet {
         String rawCodesPair = req.getPathInfo();
 
         if (hasMissingCode(rawCodesPair)) {
-            sendBadRequest(resp, objectMapper);
+            sendBadPairCodeRequest(resp, objectMapper);
             return;
         }
 
         String cleanCodesPair = rawCodesPair.substring(1);
-        if (cleanCodesPair.length() != PROPER_CODES_LENGTH) {
-            sendBadRequest(resp, objectMapper);
+        if (hasWrongCodePairLength(cleanCodesPair)) {
+            sendBadSignLengthRequest(resp, objectMapper);
             return;
         }
 
@@ -170,13 +167,13 @@ public class ExchangeRateServlet extends HttpServlet {
         String rawCodesPair = req.getPathInfo();
 
         if (hasMissingCode(rawCodesPair)) {
-            sendBadRequest(resp, objectMapper);
+            sendBadPairCodeRequest(resp, objectMapper);
             return;
         }
 
         String cleanCodesPair = rawCodesPair.substring(1);
-        if (cleanCodesPair.length() != PROPER_CODES_LENGTH) {
-            sendBadRequest(resp, objectMapper);
+        if (hasWrongCodePairLength(cleanCodesPair)) {
+            sendBadSignLengthRequest(resp, objectMapper);
             return;
         }
 
@@ -211,14 +208,27 @@ public class ExchangeRateServlet extends HttpServlet {
         }
     }
 
+    private boolean hasWrongCodePairLength(String cleanCodesPair) {
+        return cleanCodesPair.length() != PROPER_CODES_LENGTH;
+    }
+
     private boolean hasMissingCode(String code) {
         return code == null || "/".equals(code);
     }
 
-    private void sendBadRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
+    private void sendBadPairCodeRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         String errorJson = objectMapper.writeValueAsString(
                 new ErrorResponseDTO("Currency pair code (one or both) is not provided")
+        );
+
+        resp.getWriter().write(errorJson);
+    }
+
+    private void sendBadSignLengthRequest(HttpServletResponse resp, ObjectMapper objectMapper) throws IOException {
+        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        String errorJson = objectMapper.writeValueAsString(
+                new ErrorResponseDTO("Currency pair code has wrong length")
         );
 
         resp.getWriter().write(errorJson);
