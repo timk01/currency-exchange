@@ -28,7 +28,7 @@ public class ExchangeServlet extends BaseApiServlet {
         String amount = req.getParameter("amount");
 
         if (ValidationsUtil.hasMissingRequiredFields(baseCode, targetCode, amount)) {
-            doWriteError(
+            writeError(
                     resp,
                     "Required field(s) is/are missing",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -43,7 +43,7 @@ public class ExchangeServlet extends BaseApiServlet {
                 throw new NumberFormatException();
             }
         } catch (NumberFormatException e) {
-            doWriteError(
+            writeError(
                     resp,
                     "Invalid amount",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -55,11 +55,11 @@ public class ExchangeServlet extends BaseApiServlet {
             ExchangeRateExtendedRespDTO crossCourse = service.calculateExchange(
                     new ExchangeRequestDTO(baseCode, targetCode, parsedAmount)
             );
-            doWriteResponse(resp, crossCourse, HttpServletResponse.SC_OK);
+            writeResponse(resp, crossCourse, HttpServletResponse.SC_OK);
         } catch (CrossCourseNotFoundException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 }

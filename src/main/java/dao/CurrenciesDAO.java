@@ -38,10 +38,11 @@ public class CurrenciesDAO {
     }
 
     /**
-     * Контракт:
      * Создаёт новую валюту в БД и возвращает созданную модель с ID,
      * сгенерированным базой данных.
-     * -- не возвращает null
+     * Особенности реализации:
+     * validateCurrencyCodeBefore(currencyReqDTO, connection); - предварительная проверка существования валюты по code
+     * checkUniqueConstraint(e); - финальная защита уникальности на уровне БД
      *
      * @param currencyReqDTO данные для создания валюты: code, name, sign
      * @return созданная валюта с заполненным ID
@@ -97,7 +98,7 @@ public class CurrenciesDAO {
         }
     }
 
-    private static void checkUniqueConstraint(SQLiteException e) {
+    private void checkUniqueConstraint(SQLiteException e) {
         if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
             throw new CurrencyAlreadyExistsException("currency already exists", e);
         }

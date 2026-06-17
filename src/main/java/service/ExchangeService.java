@@ -13,8 +13,9 @@ import java.math.RoundingMode;
 import java.util.Optional;
 
 public class ExchangeService {
+    private static final String CROSS_COURSE_CONSTANT = "USD";
 
-    private ExchangeRatesDAO exchangeRatesDAO;
+    private final ExchangeRatesDAO exchangeRatesDAO;
 
     public ExchangeService() {
         this.exchangeRatesDAO = new ExchangeRatesDAO();
@@ -33,13 +34,13 @@ public class ExchangeService {
         optionalProjection = exchangeRatesDAO
                 .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(targetCode, baseCode));
         if (optionalProjection.isPresent()) {
-            return buildBackWadCourse(exchangeRequestDTO, optionalProjection.get());
+            return buildBackWardCourse(exchangeRequestDTO, optionalProjection.get());
         }
 
         Optional<ExchangeRateTableProjection> usdBasedProjectionForBase = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO("USD", baseCode));
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(CROSS_COURSE_CONSTANT, baseCode));
         Optional<ExchangeRateTableProjection> usdBasedProjectionForTarget = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO("USD", targetCode));
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(CROSS_COURSE_CONSTANT, targetCode));
         if (usdBasedProjectionForBase.isPresent() && usdBasedProjectionForTarget.isPresent()) {
             return buildCrossUSDCourse(
                     exchangeRequestDTO,
@@ -66,7 +67,7 @@ public class ExchangeService {
         );
     }
 
-    private ExchangeRateExtendedRespDTO buildBackWadCourse(
+    private ExchangeRateExtendedRespDTO buildBackWardCourse(
             ExchangeRequestDTO exchangeRequestDTO,
             ExchangeRateTableProjection projection
     ) {

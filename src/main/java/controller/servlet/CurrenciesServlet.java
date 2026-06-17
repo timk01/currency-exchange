@@ -16,6 +16,7 @@ import java.util.List;
 @WebServlet(urlPatterns = "/currencies")
 public class CurrenciesServlet extends BaseApiServlet {
     private final static int MAX_SIGN_LENGTH = 3;
+    private final static int PROPER_CODE_LENGTH = 3;
 
     private final CurrenciesService currencyService;
 
@@ -27,9 +28,9 @@ public class CurrenciesServlet extends BaseApiServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             List<CurrencyRespDTO> allCurrencies = currencyService.findAllCurrencies();
-            doWriteResponse(resp, allCurrencies, HttpServletResponse.SC_OK);
+            writeResponse(resp, allCurrencies, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 
@@ -40,7 +41,7 @@ public class CurrenciesServlet extends BaseApiServlet {
         String sign = req.getParameter("sign");
 
         if (ValidationsUtil.hasMissingRequiredFields(name, code, sign)) {
-            doWriteError(
+            writeError(
                     resp,
                     "required field(s) is/are missing",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -48,8 +49,17 @@ public class CurrenciesServlet extends BaseApiServlet {
             return;
         }
 
+        if (ValidationsUtil.hasLengthNotEqualToExpected(code, PROPER_CODE_LENGTH)) {
+            writeError(
+                    resp,
+                    "currency code has wrong length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return;
+        }
+
         if (ValidationsUtil.hasLengthMoreThanExpected(sign, MAX_SIGN_LENGTH)) {
-            doWriteError(
+            writeError(
                     resp,
                     "sign has wrong length",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -59,11 +69,11 @@ public class CurrenciesServlet extends BaseApiServlet {
 
         try {
             CurrencyRespDTO currency = currencyService.createCurrency(new CurrencyReqDTO(name, code, sign));
-            doWriteResponse(resp, currency, HttpServletResponse.SC_CREATED);
+            writeResponse(resp, currency, HttpServletResponse.SC_CREATED);
         } catch (CurrencyAlreadyExistsException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 }

@@ -29,9 +29,9 @@ public class ExchangeRatesServlet extends BaseApiServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             List<ExchangeRateRespDTO> rates = exchangeRatesService.findAllExchangeRates();
-            doWriteResponse(resp, rates, HttpServletResponse.SC_OK);
+            writeResponse(resp, rates, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 
@@ -42,7 +42,7 @@ public class ExchangeRatesServlet extends BaseApiServlet {
         String rate = req.getParameter("rate");
 
         if (ValidationsUtil.hasMissingRequiredFields(baseCode, targetCode, rate)) {
-            doWriteError(resp,
+            writeError(resp,
                     "Required field(s) is/are missing",
                     HttpServletResponse.SC_BAD_REQUEST
             );
@@ -50,7 +50,7 @@ public class ExchangeRatesServlet extends BaseApiServlet {
         }
 
         if (baseCode.equals(targetCode)) {
-            doWriteError(resp,
+            writeError(resp,
                     "baseCode and targetCode should be different",
                     HttpServletResponse.SC_BAD_REQUEST
             );
@@ -63,9 +63,8 @@ public class ExchangeRatesServlet extends BaseApiServlet {
             if (normalizedRate.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new NumberFormatException();
             }
-
         } catch (NumberFormatException e) {
-            doWriteError(resp,
+            writeError(resp,
                     "Invalid rate",
                     HttpServletResponse.SC_BAD_REQUEST
             );
@@ -78,13 +77,13 @@ public class ExchangeRatesServlet extends BaseApiServlet {
                             baseCode, targetCode, normalizedRate
                     )
             );
-            doWriteResponse(resp, exchangeRate, HttpServletResponse.SC_CREATED);
+            writeResponse(resp, exchangeRate, HttpServletResponse.SC_CREATED);
         } catch (CurrencyIsNotFoundException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (ExchangeRateAlreadyExistsException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 }

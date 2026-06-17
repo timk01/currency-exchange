@@ -25,7 +25,7 @@ public class CurrencyServlet extends BaseApiServlet {
         String rawCode = req.getPathInfo();
 
         if (ValidationsUtil.hasMissingPathInfo(rawCode)) {
-            doWriteError(
+            writeError(
                     resp,
                     "Currency code is not provided",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -35,11 +35,11 @@ public class CurrencyServlet extends BaseApiServlet {
 
         try {
             CurrencyRespDTO foundCurrency = currencyService.findCurrency(rawCode.substring(1));
-            doWriteResponse(resp, foundCurrency, HttpServletResponse.SC_OK);
+            writeResponse(resp, foundCurrency, HttpServletResponse.SC_OK);
         } catch (CurrencyIsNotFoundException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 }

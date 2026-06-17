@@ -37,7 +37,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
         String body = readMethodBody(req);
 
         if (body.isBlank()) {
-            doWriteError(
+            writeError(
                     resp,
                     "method body is empty",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -49,7 +49,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
         try {
             normalizedRate = parseRateFromPatchBody(body);
         } catch (IllegalArgumentException e) {
-            doWriteError(
+            writeError(
                     resp,
                     "invalid/missing rate",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -95,7 +95,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
         return normalizedRate;
     }
 
-    protected void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, BigDecimal rate) throws IOException {
+    private void doCustomPatch(HttpServletRequest req, HttpServletResponse resp, BigDecimal rate) throws IOException {
         String cleanCodesPair = resolveCleanPairCode(req, resp);
         if (cleanCodesPair == null) {
             return;
@@ -108,11 +108,11 @@ public class ExchangeRateServlet extends BaseApiServlet {
                     ),
                     rate
             );
-            doWriteResponse(resp, pair, HttpServletResponse.SC_OK);
+            writeResponse(resp, pair, HttpServletResponse.SC_OK);
         } catch (ExchangeRatePairDoesNotExistException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 
@@ -129,11 +129,11 @@ public class ExchangeRateServlet extends BaseApiServlet {
                             cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH)
                     )
             );
-            doWriteResponse(resp, pair, HttpServletResponse.SC_OK);
+            writeResponse(resp, pair, HttpServletResponse.SC_OK);
         } catch (ExchangeRatePairDoesNotExistException e) {
-            doWriteError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
+            writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (InternalServerException e) {
-            doWrite500Error(resp, e);
+            write500Error(resp, e);
         }
     }
 
@@ -141,7 +141,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
         String rawCodesPair = req.getPathInfo();
 
         if (ValidationsUtil.hasMissingPathInfo(rawCodesPair)) {
-            doWriteError(
+            writeError(
                     resp,
                     "Currency pair code (one or both) is not provided",
                     HttpServletResponse.SC_BAD_REQUEST
@@ -151,7 +151,7 @@ public class ExchangeRateServlet extends BaseApiServlet {
 
         String cleanCodesPair = rawCodesPair.substring(1);
         if (ValidationsUtil.hasLengthNotEqualToExpected(cleanCodesPair, PROPER_CODES_LENGTH)) {
-            doWriteError(
+            writeError(
                     resp,
                     "Currency pair code has wrong length",
                     HttpServletResponse.SC_BAD_REQUEST

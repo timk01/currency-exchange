@@ -16,6 +16,11 @@ import java.util.List;
 import java.util.Optional;
 
 public class ExchangeRatesDAO {
+
+    /**
+     * Join в строке запроса позволяет избежать кучи дополнительных запросов и n+1 проблемы
+     * Основной защитой от неконсистентности остается БД
+     */
     private static final String SELECT_EXCHANGE_RATE_PROJECTION = """
             SELECT ER.ID as ID,
                    ER.Rate as Rate,
@@ -61,20 +66,6 @@ public class ExchangeRatesDAO {
         }
     }
 
-    private ExchangeRateTableProjection getRequiredExchangeRateTableProjection(
-            ExchangeRateCodePairDTO pair,
-            Connection connection
-    ) throws SQLException {
-        Optional<ExchangeRateTableProjection> exchangeRateTableProjection =
-                getExchangeRateTableProjection(pair, connection);
-        if (exchangeRateTableProjection.isPresent()) {
-            return exchangeRateTableProjection.get();
-        }
-        throw new ExchangeRatePairDoesNotExistException(
-                "the following pair is not found: " + pair.baseCode() + pair.targetCode()
-        );
-    }
-
     public Optional<ExchangeRateTableProjection> optionalFindExchangeRatePair(ExchangeRateCodePairDTO pair) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             return getExchangeRateTableProjection(pair, connection);
@@ -85,10 +76,12 @@ public class ExchangeRatesDAO {
 
     /**
      * ps.executeUpdate():
-     * НЕ проверяет возвращаемое значение как if( > 0),т.к к этому моменту:
-     * а) мы УЖЕ нашли пару (SELECT)
-     * б) update выполнился по ID найденной строки
-     * ИЛИ ЖЕ, повторный PATCH с тем же rate ТАКЖЕ считается успешным
+     * Метод сначала ищет exchange rate pair,
+     * затем обновляет найденную строку по ID в рамках одной connection/transaction.
+     *
+     * Если пара не найдена — кидает ExchangeRatePairDoesNotExistException.
+     * Результат executeUpdate() отдельно не проверяется (смысла нет):
+     * к моменту UPDATE пара уже найдена, а повторный PATCH с тем же rate считается успешным.
      *
      * @param pair
      * @param rate
@@ -129,6 +122,20 @@ public class ExchangeRatesDAO {
         } catch (SQLException e) {
             throw new InternalServerException("internal server error", e);
         }
+    }
+
+    private ExchangeRateTableProjection getRequiredExchangeRateTableProjection(
+            ExchangeRateCodePairDTO pair,
+            Connection connection
+    ) throws SQLException {
+        Optional<ExchangeRateTableProjection> exchangeRateTableProjection =
+                getExchangeRateTableProjection(pair, connection);
+        if (exchangeRateTableProjection.isPresent()) {
+            return exchangeRateTableProjection.get();
+        }
+        throw new ExchangeRatePairDoesNotExistException(
+                "the following pair is not found: " + pair.baseCode() + pair.targetCode()
+        );
     }
 
     private Optional<ExchangeRateTableProjection> getExchangeRateTableProjection(ExchangeRateCodePairDTO pair, Connection connection) throws SQLException {
