@@ -471,7 +471,7 @@ curl -i http://localhost:8080/currencies
 <details>
   <summary>Детали реализации</summary>
 
-## Детали реализации
+## Детали реализации для любопытных
 
 ### SQLite и тип `REAL` для курса
 
