@@ -8,7 +8,6 @@ import java.math.RoundingMode;
 
 public class ExchangeRateProjectionToExchangeRateRespDTOConverter
         implements Converter<ExchangeRateRespDTO, ExchangeRateTableProjection> {
-
     private final CurrencyToCurrencyDTOConverter currencyToCurrencyDTOConverter;
 
     public ExchangeRateProjectionToExchangeRateRespDTOConverter() {

@@ -5,8 +5,8 @@ public final class ValidationsUtil {
     }
 
     public static boolean hasMissingRequiredFields(String first,
-                                                    String second,
-                                                    String third) {
+                                                   String second,
+                                                   String third) {
         return first == null || first.isBlank()
                 || second == null || second.isBlank()
                 || third == null || third.isBlank();

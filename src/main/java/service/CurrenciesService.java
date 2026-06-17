@@ -11,9 +11,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CurrenciesService {
-
-    private CurrenciesDAO currencyDAO;
-    private Converter<CurrencyRespDTO, Currency> converter;
+    private final CurrenciesDAO currencyDAO;
+    private final Converter<CurrencyRespDTO, Currency> converter;
 
     public CurrenciesService() {
         this.currencyDAO = new CurrenciesDAO();
@@ -31,5 +30,4 @@ public class CurrenciesService {
         Currency currency = currencyDAO.createCurrency(currencyReqDTO);
         return converter.convert(currency);
     }
-
 }

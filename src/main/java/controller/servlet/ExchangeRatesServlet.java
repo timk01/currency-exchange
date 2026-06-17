@@ -18,7 +18,6 @@ import java.util.List;
 
 @WebServlet(urlPatterns = "/exchangeRates")
 public class ExchangeRatesServlet extends BaseApiServlet {
-
     private final ExchangeRatesService exchangeRatesService;
 
     public ExchangeRatesServlet() {

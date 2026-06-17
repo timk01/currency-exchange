@@ -1,6 +1,3 @@
-PRAGMA foreign_keys = ON; --не забывать включать при КАЖДОМ коннекте к БД (ЖДБЦ)
--- только тут этого не достаточно
-
 CREATE TABLE IF NOT EXISTS Currencies
 (
     ID       INTEGER PRIMARY KEY AUTOINCREMENT,

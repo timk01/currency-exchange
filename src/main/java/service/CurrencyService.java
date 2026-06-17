@@ -2,19 +2,13 @@ package service;
 
 import converter.Converter;
 import converter.CurrencyToCurrencyDTOConverter;
-import dao.CurrenciesDAO;
 import dao.CurrencyDAO;
-import dto.request.CurrencyReqDTO;
 import dto.responce.CurrencyRespDTO;
 import model.Currency;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 public class CurrencyService {
-
-    private CurrencyDAO currencyDAO;
-    private Converter<CurrencyRespDTO, Currency> converter;
+    private final CurrencyDAO currencyDAO;
+    private final Converter<CurrencyRespDTO, Currency> converter;
 
     public CurrencyService() {
         this.currencyDAO = new CurrencyDAO();

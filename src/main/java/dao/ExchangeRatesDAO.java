@@ -77,7 +77,7 @@ public class ExchangeRatesDAO {
     /**
      * ps.executeUpdate():
      * Метод сначала ищет exchange rate pair,
-     * затем обновляет найденную строку по ID в рамках одной connection/transaction.
+     * затем обновляет найденную строку по ID в рамках ОДНОЙ connection/transaction.
      *
      * Если пара не найдена — кидает ExchangeRatePairDoesNotExistException.
      * Результат executeUpdate() отдельно не проверяется (смысла нет):

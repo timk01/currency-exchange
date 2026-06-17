@@ -31,7 +31,7 @@ public class BaseApiServlet extends HttpServlet {
     }
 
     protected void write500Error(HttpServletResponse resp, Exception e) throws IOException {
-        writeError(resp, "internal server error",  HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        writeError(resp, "internal server error", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         System.err.println(e.getMessage());
         e.printStackTrace();
     }
