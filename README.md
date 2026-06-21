@@ -4,7 +4,8 @@
   <img src="docs/screenshots/welcome.png" alt="welcome" width="320">
 </p>
 
-REST API для работы с валютами и обменными курсами.
+Веб-приложение для работы с валютами и обменными курсами. 
+Приложение предоставляет REST API и браузерный интерфейс, доступный по корневому адресу приложения.
 
 Приложение позволяет:
 
@@ -13,6 +14,12 @@ REST API для работы с валютами и обменными курс�
 * просматривать список обменных курсов;
 * добавлять и редактировать обменные курсы;
 * рассчитывать конвертацию произвольной суммы из одной валюты в другую.
+
+После запуска браузерный интерфейс доступен по корневому адресу приложения:
+
+```text 
+http://localhost:8080/
+```
 
 *Проект реализован на Java 21 с использованием MVC-архитектуры, Java Servlets, Apache Tomcat, JDBC, SQLite и HikariCP.*
 
@@ -240,7 +247,7 @@ GET /exchange?from=USD&to=RUB&amount=10
 <details>
   <summary>Быстрый старт</summary>
 
-## Вариант A — Локальный запуск
+## Вариант A — Локальный запуск (windows, linux - чуть иначе)
 
 ### Требования
 
@@ -267,18 +274,22 @@ cd currency-exchange
 
 ---
 
-### 2. Проверить путь к SQLite DB
+### 2. Настроить путь к SQLite DB
 
 В проекте используется SQLite.
-Путь к базе данных задаётся в `DBConnectionFactory`.
 
-Для локального запуска путь должен указывать на локальный `.db` файл, например:
+JDBC URL не хранится непосредственно в исходном коде, а передаётся приложению через системное свойство JVM:
 
 ```text
-jdbc:sqlite:src/main/data/currency_exchange.db
+db.url
 ```
 
-или на абсолютный путь к файлу БД на вашей машине.
+При запуске через IntelliJ IDEA необходимо открыть конфигурацию локального Tomcat и добавить в VM options:
+
+-Ddb.url=jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db
+(где томкат - едит конфигурейшенс)
+
+Путь после jdbc:sqlite: должен указывать на существующий файл БД на вашей машине.
 
 ---
 
@@ -305,23 +316,26 @@ target/
 1. Открыть проект в IntelliJ IDEA.
 2. Добавить локальный Tomcat 9 в **Run/Debug Configurations**.
 3. Добавить WAR artifact.
-4. Запустить Tomcat из IDE.
-
-Если приложение развёрнуто как ROOT artifact, endpoint-ы будут доступны так:
+4. Установить **Application context** в `/`.
+5. Добавить в **VM options** путь к локальной БД:
 
 ```text
+-Ddb.url=jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db
+```
+
+Запустить Tomcat из IDE.
+
+Браузерный интерфейс будет доступен по адресу:
+
+http://localhost:8080/
+
+REST API будет доступен по адресам:
+
 http://localhost:8080/currencies
 http://localhost:8080/exchangeRates
-http://localhost:8080/exchange
-```
+http://localhost:8080/exchange?from=USD&to=EUR&amount=100
 
-Если приложение развёрнуто не как ROOT, а с context path, например `currency-exchange`, URL будут такими:
-
-```text
-http://localhost:8080/currency-exchange/currencies
-http://localhost:8080/currency-exchange/exchangeRates
-http://localhost:8080/currency-exchange/exchange
-```
+---
 
 #### Способ 2 — вручную через Tomcat
 
@@ -334,6 +348,14 @@ cp target/currency-exchange.war <TOMCAT_HOME>/webapps/ROOT.war
 ```
 
 Затем запустить Tomcat.
+
+Перед запуском Tomcat необходимо передать JVM системное свойство `db.url`, например через `CATALINA_OPTS` или файл `setenv`.
+
+Значение свойства должно указывать на существующий файл локальной базы данных:
+
+```text
+-Ddb.url=jdbc:sqlite:<ABSOLUTE_PATH_TO_DB>
+```
 
 ---
 
@@ -378,11 +400,35 @@ scp src/main/data/currency_exchange.db root@<SERVER_IP>:/opt/tomcat/data/currenc
 chown -R tomcat:tomcat /opt/tomcat/data
 ```
 
-В `DBConnectionFactory` для серверного запуска должен быть указан путь:
+Путь к серверной БД передаётся Tomcat через системное свойство `db.url`.
 
-```text
-jdbc:sqlite:/opt/tomcat/data/currency_exchange.db
+Создать systemd override для Tomcat:
+
+```bash
+sudo systemctl edit tomcat
 ```
+
+Добавить в открывшийся файл:
+
+[Service]
+Environment="CATALINA_OPTS=-Ddb.url=jdbc:sqlite:/opt/tomcat/data/currency_exchange.db"
+
+Сохранить файл и применить изменения:
+
+systemctl daemon-reload
+systemctl restart tomcat
+systemctl status tomcat
+
+Проверить, что переменная была добавлена:
+
+systemctl show tomcat --property=Environment
+
+В результате среди переменных окружения должно присутствовать:
+
+CATALINA_OPTS=-Ddb.url=jdbc:sqlite:/opt/tomcat/data/currency_exchange.db
+
+Эта настройка выполняется на сервере один раз и сохраняется при последующих деплоях приложения.
+
 
 ---
 
@@ -428,17 +474,21 @@ systemctl status tomcat
 
 ### 6. Проверить приложение
 
-На сервере:
+Проверить REST API на сервере:
 
 ```bash
 curl -i http://localhost:8080/currencies
 ```
 
-Снаружи:
+Браузерный интерфейс снаружи доступен по адресу:
 
-```text
+http://<SERVER_IP>:8080/
+
+REST API доступен по адресам:
+
 http://<SERVER_IP>:8080/currencies
-```
+http://<SERVER_IP>:8080/exchangeRates
+http://<SERVER_IP>:8080/exchange?from=USD&to=EUR&amount=100
 
 ---
 
@@ -519,9 +569,20 @@ maximumPoolSize = 1
 
 ### Конфигурация БД
 
-JDBC URL и настройки Hikari оставлены в `DBConnectionFactory`.
+Настройки HikariCP находятся в `DBConnectionFactory`.
 
-Отдельный `.properties` файл не добавлялся осознанно, простоты ради.
+JDBC URL передаётся приложению через системное свойство JVM:
+
+```text
+db.url
+```
+
+Это позволяет использовать один и тот же WAR в разных окружениях:
+
+локально — jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db
+на сервере — jdbc:sqlite:/opt/tomcat/data/currency_exchange.db
+
+Отдельный .properties файл не добавлялся: локальное значение передаётся через VM options, а серверное — через CATALINA_OPTS в systemd override.
 
 ---
 
@@ -556,24 +617,27 @@ DAO / Service выбрасывают project exceptions, а servlet-слой п�
 Общие настройки request/response вынесены в filter:
 
 ```text
-UTF-8
-Content-Type: application/json
+request encoding — UTF-8 
+response encoding — UTF-8
 ```
+(Content-Type: application/json - не выставленна намеренно, т.к. есть JS для отображения фронта)
 
-Общая запись JSON-ответов и ошибок вынесена в `BaseApiServlet`.
+Установка JSON content type, сериализация успешных ответов и запись ошибок выполняются в BaseApiServlet
 
 </details>
 
 ---
 
-## Важные замечания
+## Важные замечания 
 
-* Проект использует **Tomcat 9**, потому что servlet API в проекте основан на `javax.servlet`.
-* Приложение деплоится как `ROOT.war`, чтобы API был доступен без context path.
-* SQLite DB должна находиться по пути, указанному в `DBConnectionFactory`.
-* Пользователь `tomcat` должен иметь права на чтение/запись файла БД и директории, где он расположен.
-* Если используется HikariCP, `Connection.close()` в DAO не закрывает физическое соединение, а возвращает его в connection pool.
-* При остановке/redeploy web-приложения Hikari pool закрывается через `ServletContextListener`.
+* Проект использует **Tomcat 9**, потому что servlet API в проекте основан на `javax.servlet`. 
+* Приложение деплоится как `ROOT.war`, поэтому браузерный интерфейс доступен по корневому адресу, а REST API — без дополнительного context path.
+* JDBC URL должен быть передан JVM через системное свойство `db.url`. 
+* Пользователь `tomcat` должен иметь права на чтение и запись файла БД и директории, где он расположен. 
+* Фронтенд обращается к API через относительный адрес `host = "."`, поэтому один и тот же код работает локально и на удалённом сервере.
+* `Content-Type: application/json` устанавливается только для API-ответов в `BaseApiServlet`. 
+* Если используется HikariCP, `Connection.close()` в DAO не закрывает физическое соединение, а возвращает его в connection pool. 
+* При остановке или redeploy web-приложения Hikari pool закрывается через `ServletContextListener`.
 
 ## Контакты
 

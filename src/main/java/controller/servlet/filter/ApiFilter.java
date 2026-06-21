@@ -11,7 +11,6 @@ public class ApiFilter implements Filter {
             throws IOException, ServletException {
         req.setCharacterEncoding("UTF-8");
         resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=UTF-8");
 
         chain.doFilter(req, resp);
     }

@@ -15,6 +15,7 @@ public class BaseApiServlet extends HttpServlet {
     }
 
     protected void writeResponse(HttpServletResponse resp, Object whatToSerialize, int status) throws IOException {
+        resp.setContentType("application/json; charset=UTF-8");
         resp.setStatus(status);
         String whatToWrite = objectMapper
                 .writerWithDefaultPrettyPrinter()
@@ -23,6 +24,7 @@ public class BaseApiServlet extends HttpServlet {
     }
 
     protected void writeError(HttpServletResponse resp, String message, int status) throws IOException {
+        resp.setContentType("application/json; charset=UTF-8");
         resp.setStatus(status);
         String errorJson = objectMapper.writeValueAsString(
                 new ErrorResponseDTO(message)
@@ -31,6 +33,7 @@ public class BaseApiServlet extends HttpServlet {
     }
 
     protected void write500Error(HttpServletResponse resp, Exception e) throws IOException {
+        resp.setContentType("application/json; charset=UTF-8");
         writeError(resp, "internal server error", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         System.err.println(e.getMessage());
         e.printStackTrace();

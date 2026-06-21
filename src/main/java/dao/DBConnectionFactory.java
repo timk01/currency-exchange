@@ -7,7 +7,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 public final class DBConnectionFactory {
-    private static final String URL = "jdbc:sqlite:/opt/tomcat/data/currency_exchange.db";
+    private static final String URL = System.getProperty("db.url");
     private static final String DRIVER_NAME = "org.sqlite.JDBC";
     private static final HikariDataSource ds;
 
