@@ -53,7 +53,7 @@ public class ExchangeRatesDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException("Failed to read exchange rates from the database", e);
         }
         return exchangeRates;
     }
@@ -62,7 +62,11 @@ public class ExchangeRatesDAO {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             return getRequiredExchangeRateTableProjection(pair, connection);
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(
+                    String.format(
+                            "Failed to read exchange rate pair '%s' and '%s' from the database",
+                            pair.baseCode(), pair.targetCode()),
+                    e);
         }
     }
 
@@ -70,7 +74,11 @@ public class ExchangeRatesDAO {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             return getExchangeRateTableProjection(pair, connection);
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(
+                    String.format(
+                            "Failed to read exchange rate pair '%s' and '%s' from the database",
+                            pair.baseCode(), pair.targetCode()),
+                    e);
         }
     }
 
@@ -78,7 +86,7 @@ public class ExchangeRatesDAO {
      * ps.executeUpdate():
      * Метод сначала ищет exchange rate pair,
      * затем обновляет найденную строку по ID в рамках ОДНОЙ connection/transaction.
-     *
+     * <p>
      * Если пара не найдена — кидает ExchangeRatePairDoesNotExistException.
      * Результат executeUpdate() отдельно не проверяется (смысла нет):
      * к моменту UPDATE пара уже найдена, а повторный PATCH с тем же rate считается успешным.
@@ -115,12 +123,18 @@ public class ExchangeRatesDAO {
                 throw e;
             } catch (SQLException e) {
                 connection.rollback();
-                throw new InternalServerException("internal server error", e);
+                throw new InternalServerException(String.format(
+                        "Cannot update pair with codes '%s' and '%s'",
+                        pair.baseCode(), pair.targetCode()),
+                        e);
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(String.format(
+                    "Cannot update pair with codes '%s' and '%s'",
+                    pair.baseCode(), pair.targetCode()),
+            e);
         }
     }
 
@@ -134,7 +148,7 @@ public class ExchangeRatesDAO {
             return exchangeRateTableProjection.get();
         }
         throw new ExchangeRatePairDoesNotExistException(
-                "the following pair is not found: " + pair.baseCode() + pair.targetCode()
+                "The following pair is not found: " + pair.baseCode() + pair.targetCode()
         );
     }
 
@@ -196,21 +210,32 @@ public class ExchangeRatesDAO {
                                 rate
                         );
                     } else {
-                        throw new InternalServerException("internal server error");
+                        throw new InternalServerException(
+                                String.format("Failed to obtain generated ID for exchange rate pair '%s' and '%s'",
+                                        transferData.base().getCode(), transferData.target().getCode()));
                     }
                 }
             }
         } catch (SQLiteException e) {
-            checkUniquePairConstraint(e);
-            throw new InternalServerException("internal server error", e);
+            checkUniquePairConstraint(e, transferData);
+            throw new InternalServerException(String.format(
+                    "Failed to create exchange rate pair '%s' and '%s' in the database",
+                    transferData.base().getCode(), transferData.target().getCode()),
+                    e);
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(String.format(
+                    "Failed to create exchange rate pair '%s' and '%s' in the database",
+                    transferData.base().getCode(), transferData.target().getCode()),
+                    e);
         }
     }
 
-    private void checkUniquePairConstraint(SQLiteException e) {
+    private void checkUniquePairConstraint(SQLiteException e, ExchangeRateTransfer transferData) {
         if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
-            throw new ExchangeRateAlreadyExistsException("this exchange pair already exists", e);
+            throw new ExchangeRateAlreadyExistsException(String.format(
+                    "This exchange pair '%s' and '%s' already exists",
+                    transferData.base().getCode(), transferData.target().getCode()),
+                    e);
         }
     }
 }

@@ -32,7 +32,7 @@ public class CurrenciesDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException("Failed to read currencies from the database", e);
         }
         return currencies;
     }
@@ -75,15 +75,20 @@ public class CurrenciesDAO {
                         currency.setSign(sign);
                         return currency;
                     } else {
-                        throw new InternalServerException("internal server error");
+                        throw new InternalServerException(
+                                "Failed to obtain generated ID for currency with '" + code + "'");
                     }
                 }
             }
         } catch (SQLiteException e) {
-            checkUniqueConstraint(e);
-            throw new InternalServerException("internal server error", e);
+            checkUniqueConstraint(e, currencyReqDTO.code());
+            throw new InternalServerException(
+                    "Failed to create currency with code '" + currencyReqDTO.code() + "' in the database",
+                    e);
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(
+                    "Failed to create currency with code '" + currencyReqDTO.code() + "' in the database",
+                    e);
         }
     }
 
@@ -92,15 +97,20 @@ public class CurrenciesDAO {
             ps.setString(1, currencyReqDTO.code());
             try (ResultSet resultSet = ps.executeQuery()) {
                 if (resultSet.next()) {
-                    throw new CurrencyAlreadyExistsException("currency already exists");
+                    throw new CurrencyAlreadyExistsException(
+                            "Currency with code '" + currencyReqDTO.code() + "' already exists"
+                    );
                 }
             }
         }
     }
 
-    private void checkUniqueConstraint(SQLiteException e) {
+    private void checkUniqueConstraint(SQLiteException e, String code) {
         if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
-            throw new CurrencyAlreadyExistsException("currency already exists", e);
+            throw new CurrencyAlreadyExistsException(
+                    "Currency with code '" + code + "' already exists",
+                    e
+            );
         }
     }
 }

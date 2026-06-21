@@ -27,12 +27,15 @@ public class CurrencyDAO {
                                 resultSet.getString("Sign")
                         );
                     } else {
-                        throw new CurrencyIsNotFoundException("currency is not found");
+                        throw new CurrencyIsNotFoundException("Currency with code '" + code + "' was not found");
                     }
                 }
             }
         } catch (SQLException e) {
-            throw new InternalServerException("internal server error", e);
+            throw new InternalServerException(
+                    "Failed to read currency with code '" + code + "' from the database",
+                    e
+            );
         }
     }
 }

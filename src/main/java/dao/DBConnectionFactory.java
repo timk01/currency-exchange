@@ -31,7 +31,6 @@ public final class DBConnectionFactory {
     public static void closePool() {
         if (ds != null && !ds.isClosed()) {
             ds.close();
-            System.out.println("Hikari connection pool has been closed.");
         }
     }
 }

@@ -3,7 +3,7 @@ package controller.servlet;
 import controller.servlet.util.ValidationsUtil;
 import dto.request.ExchangeRequestDTO;
 import dto.responce.ExchangeRateExtendedRespDTO;
-import exception.CrossCourseNotFoundException;
+import exception.ExchangeRateNotFoundException;
 import exception.InternalServerException;
 import service.ExchangeService;
 
@@ -56,7 +56,7 @@ public class ExchangeServlet extends BaseApiServlet {
                     new ExchangeRequestDTO(baseCode, targetCode, parsedAmount)
             );
             writeResponse(resp, crossCourse, HttpServletResponse.SC_OK);
-        } catch (CrossCourseNotFoundException e) {
+        } catch (ExchangeRateNotFoundException e) {
             writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);
         } catch (InternalServerException e) {
             write500Error(resp, e);

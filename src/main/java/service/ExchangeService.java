@@ -4,7 +4,7 @@ import dao.ExchangeRatesDAO;
 import dto.request.ExchangeRateCodePairDTO;
 import dto.request.ExchangeRequestDTO;
 import dto.responce.ExchangeRateExtendedRespDTO;
-import exception.CrossCourseNotFoundException;
+import exception.ExchangeRateNotFoundException;
 import model.Currency;
 import model.ExchangeRateTableProjection;
 
@@ -49,7 +49,8 @@ public class ExchangeService {
             );
         }
 
-        throw new CrossCourseNotFoundException("exchange rate for this pair is not found");
+        throw new ExchangeRateNotFoundException(String.format("Exchange rate '%s' - '%s' is not available",
+                exchangeRequestDTO.baseCode(), exchangeRequestDTO.targetCode()));
     }
 
     private ExchangeRateExtendedRespDTO buildStraightCourse(
