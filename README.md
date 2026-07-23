@@ -4,7 +4,7 @@
   <img src="docs/screenshots/welcome.png" alt="welcome" width="320">
 </p>
 
-Веб-приложение для работы с валютами и обменными курсами. 
+Веб-приложение для работы с валютами и обменными курсами.
 Приложение предоставляет REST API и браузерный интерфейс, доступный по корневому адресу приложения.
 
 Приложение позволяет:
@@ -440,35 +440,84 @@ mvn clean package
 
 ---
 
-### 3. Скопировать WAR на сервер
+### 3. Подготовить скрипт деплоя на сервере
+
+Скрипт создаётся один раз и затем используется для повторных деплоев.
+
+Локально можно создать файл `deploy-currency-exchange.sh` со следующим содержимым:
 
 ```bash
-scp target/currency-exchange.war root@<SERVER_IP>:/opt/tomcat/webapps/ROOT.war
+#!/usr/bin/env bash
+set -euo pipefail
+
+WAR_SRC="/tmp/ROOT.war"
+WEBAPPS="/opt/tomcat/webapps"
+
+if [ ! -f "$WAR_SRC" ]; then
+  echo "ERROR: $WAR_SRC not found"
+  echo "First upload WAR: scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war"
+  exit 1
+fi
+
+echo "Stopping tomcat..."
+systemctl stop tomcat
+
+echo "Removing old ROOT..."
+rm -rf "$WEBAPPS/ROOT"
+rm -f "$WEBAPPS/ROOT.war"
+
+echo "Moving new WAR..."
+mv "$WAR_SRC" "$WEBAPPS/ROOT.war"
+chown tomcat:tomcat "$WEBAPPS/ROOT.war"
+
+echo "Starting tomcat..."
+systemctl start tomcat
+
+echo "Status:"
+systemctl status tomcat --no-pager
+```
+
+Скопировать скрипт на сервер:
+
+```bash
+scp deploy-currency-exchange.sh root@<SERVER_IP>:/root/deploy-currency-exchange.sh
+```
+
+На сервере один раз выдать права на запуск и убрать Windows-переносы строк, если файл создавался в Windows:
+
+```bash
+chmod +x /root/deploy-currency-exchange.sh
+sed -i 's/
+$//' /root/deploy-currency-exchange.sh
 ```
 
 ---
 
-### 4. Выдать права Tomcat на WAR
+### 4. Скопировать WAR на сервер
 
-На сервере:
+WAR копируется во временную директорию `/tmp`:
 
 ```bash
-chown tomcat:tomcat /opt/tomcat/webapps/ROOT.war
+scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war
 ```
 
 ---
 
-### 5. Перезапустить Tomcat
+### 5. Запустить скрипт деплоя
+
+Можно зайти на сервер и выполнить:
 
 ```bash
-systemctl restart tomcat
+/root/deploy-currency-exchange.sh
 ```
 
-Проверить статус:
+Или запустить скрипт удалённо с локальной машины:
 
 ```bash
-systemctl status tomcat
+ssh root@<SERVER_IP> "/root/deploy-currency-exchange.sh"
 ```
+
+Скрипт останавливает Tomcat, удаляет старое `ROOT`-приложение, переносит новый WAR в `webapps`, выдаёт права пользователю `tomcat` и снова запускает Tomcat.
 
 ---
 
@@ -494,24 +543,35 @@ http://<SERVER_IP>:8080/exchange?from=USD&to=EUR&amount=100
 
 ## Повторный деплой после изменений
 
-Если сервер уже настроен, для повторного деплоя достаточно:
+Если сервер уже настроен, для повторного деплоя достаточно локально собрать WAR и скопировать его на сервер во временную директорию:
 
 ```bash
 mvn clean package
-scp target/currency-exchange.war root@<SERVER_IP>:/opt/tomcat/webapps/ROOT.war
+scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war
 ```
 
-Затем на сервере:
+Затем запустить серверный скрипт деплоя:
 
 ```bash
-chown tomcat:tomcat /opt/tomcat/webapps/ROOT.war
-systemctl restart tomcat
+ssh root@<SERVER_IP> "/root/deploy-currency-exchange.sh"
+```
+
+Либо зайти на сервер и выполнить:
+
+```bash
+/root/deploy-currency-exchange.sh
 ```
 
 Проверка:
 
 ```bash
 curl -i http://localhost:8080/currencies
+```
+
+Браузерный интерфейс:
+
+```text
+http://<SERVER_IP>:8080/
 ```
 
 </details>
@@ -628,15 +688,15 @@ response encoding — UTF-8
 
 ---
 
-## Важные замечания 
+## Важные замечания
 
-* Проект использует **Tomcat 9**, потому что servlet API в проекте основан на `javax.servlet`. 
+* Проект использует **Tomcat 9**, потому что servlet API в проекте основан на `javax.servlet`.
 * Приложение деплоится как `ROOT.war`, поэтому браузерный интерфейс доступен по корневому адресу, а REST API — без дополнительного context path.
-* JDBC URL должен быть передан JVM через системное свойство `db.url`. 
-* Пользователь `tomcat` должен иметь права на чтение и запись файла БД и директории, где он расположен. 
+* JDBC URL должен быть передан JVM через системное свойство `db.url`.
+* Пользователь `tomcat` должен иметь права на чтение и запись файла БД и директории, где он расположен.
 * Фронтенд обращается к API через относительный адрес `host = "."`, поэтому один и тот же код работает локально и на удалённом сервере.
-* `Content-Type: application/json` устанавливается только для API-ответов в `BaseApiServlet`. 
-* Если используется HikariCP, `Connection.close()` в DAO не закрывает физическое соединение, а возвращает его в connection pool. 
+* `Content-Type: application/json` устанавливается только для API-ответов в `BaseApiServlet`.
+* Если используется HikariCP, `Connection.close()` в DAO не закрывает физическое соединение, а возвращает его в connection pool.
 * При остановке или redeploy web-приложения Hikari pool закрывается через `ServletContextListener`.
 
 ## Контакты
