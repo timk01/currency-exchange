@@ -24,6 +24,17 @@ public final class DBConnectionFactory {
     private DBConnectionFactory() {
     }
 
+    /**
+     * метод нужен для ApplicationContextListener чтобы свалиться fail-fast на старте приложения,
+     * если с БД что-то не то
+     */
+    public static void init() {
+        try (Connection ignored = getConnection()) {
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to initialize database connection pool", e);
+        }
+    }
+
     public static Connection getConnection() throws SQLException {
         return ds.getConnection();
     }

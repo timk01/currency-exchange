@@ -1,7 +1,7 @@
 package controller.servlet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.responce.ErrorResponseDTO;
+import dto.response.ErrorRespDto;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletResponse;
@@ -27,7 +27,7 @@ public class BaseApiServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
         resp.setStatus(status);
         String errorJson = objectMapper.writeValueAsString(
-                new ErrorResponseDTO(message)
+                new ErrorRespDto(message)
         );
         resp.getWriter().write(errorJson);
     }

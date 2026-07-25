@@ -1,5 +1,7 @@
 package controller.servlet.util;
 
+import java.util.Locale;
+
 public final class ValidationsUtil {
     private ValidationsUtil() {
     }
@@ -22,5 +24,13 @@ public final class ValidationsUtil {
 
     public static boolean hasLengthMoreThanExpected(String incomingString, int maxLength) {
         return incomingString.length() > maxLength;
+    }
+
+    public static String normalizeCode(String code) {
+        return code.trim().toUpperCase(Locale.ROOT);
+    }
+
+    public static String trimNameOrSign(String nameOrSign) {
+        return nameOrSign.trim();
     }
 }

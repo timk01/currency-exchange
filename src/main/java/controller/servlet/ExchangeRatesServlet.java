@@ -1,8 +1,8 @@
 package controller.servlet;
 
 import controller.servlet.util.ValidationsUtil;
-import dto.request.ExchangeRateCreateReqDTO;
-import dto.responce.ExchangeRateRespDTO;
+import dto.request.ExchangeRateCreateReqDto;
+import dto.response.ExchangeRateRespDto;
 import exception.CurrencyIsNotFoundException;
 import exception.ExchangeRateAlreadyExistsException;
 import exception.InternalServerException;
@@ -18,6 +18,8 @@ import java.util.List;
 
 @WebServlet(urlPatterns = "/exchangeRates")
 public class ExchangeRatesServlet extends BaseApiServlet {
+    private final static int CODE_LENGTH = 3;
+
     private final ExchangeRatesService exchangeRatesService;
 
     public ExchangeRatesServlet() {
@@ -27,7 +29,7 @@ public class ExchangeRatesServlet extends BaseApiServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
-            List<ExchangeRateRespDTO> rates = exchangeRatesService.findAllExchangeRates();
+            List<ExchangeRateRespDto> rates = exchangeRatesService.findAllExchangeRates();
             writeResponse(resp, rates, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
             write500Error(resp, e);
@@ -48,6 +50,18 @@ public class ExchangeRatesServlet extends BaseApiServlet {
             return;
         }
 
+        baseCode = ValidationsUtil.normalizeCode(baseCode);
+        targetCode = ValidationsUtil.normalizeCode(targetCode);
+
+        if (ValidationsUtil.hasLengthNotEqualToExpected(baseCode, CODE_LENGTH)
+                || ValidationsUtil.hasLengthNotEqualToExpected(targetCode, CODE_LENGTH)) {
+            writeError(resp,
+                    "baseCode and targetCode should have proper length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return;
+        }
+
         if (baseCode.equals(targetCode)) {
             writeError(resp,
                     "baseCode and targetCode should be different",
@@ -56,6 +70,7 @@ public class ExchangeRatesServlet extends BaseApiServlet {
             return;
         }
 
+        rate = rate.trim();
         BigDecimal normalizedRate;
         try {
             normalizedRate = new BigDecimal(rate).setScale(6, RoundingMode.HALF_UP);
@@ -71,9 +86,11 @@ public class ExchangeRatesServlet extends BaseApiServlet {
         }
 
         try {
-            ExchangeRateRespDTO exchangeRate = exchangeRatesService.createExchangeRate(
-                    new ExchangeRateCreateReqDTO(
-                            baseCode, targetCode, normalizedRate
+            ExchangeRateRespDto exchangeRate = exchangeRatesService.createExchangeRate(
+                    new ExchangeRateCreateReqDto(
+                            baseCode,
+                            targetCode,
+                            normalizedRate
                     )
             );
             writeResponse(resp, exchangeRate, HttpServletResponse.SC_CREATED);

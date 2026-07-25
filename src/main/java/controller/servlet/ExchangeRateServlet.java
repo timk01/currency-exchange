@@ -1,8 +1,8 @@
 package controller.servlet;
 
 import controller.servlet.util.ValidationsUtil;
-import dto.request.ExchangeRateCodePairDTO;
-import dto.responce.ExchangeRateRespDTO;
+import dto.request.ExchangeRateCodePairDto;
+import dto.response.ExchangeRateRespDto;
 import exception.ExchangeRatePairDoesNotExistException;
 import exception.InternalServerException;
 import service.ExchangeRatesService;
@@ -101,10 +101,16 @@ public class ExchangeRateServlet extends BaseApiServlet {
             return;
         }
 
+        String normalizedBaseCode = ValidationsUtil.normalizeCode(
+                cleanCodesPair.substring(0, PROPER_CODES_LENGTH / 2));
+        String normalizedTargetCode = ValidationsUtil.normalizeCode(
+                cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH));
+
         try {
-            ExchangeRateRespDTO pair = service.updateExchangeRatePairRate(
-                    new ExchangeRateCodePairDTO(cleanCodesPair.substring(0, PROPER_CODES_LENGTH / 2),
-                            cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH)
+            ExchangeRateRespDto pair = service.updateExchangeRatePairRate(
+                    new ExchangeRateCodePairDto(
+                            normalizedBaseCode,
+                            normalizedTargetCode
                     ),
                     rate
             );
@@ -123,10 +129,16 @@ public class ExchangeRateServlet extends BaseApiServlet {
             return;
         }
 
+        String normalizedBaseCode = ValidationsUtil.normalizeCode(
+                cleanCodesPair.substring(0, PROPER_CODES_LENGTH / 2));
+        String normalizedTargetCode = ValidationsUtil.normalizeCode(
+                cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH));
+
         try {
-            ExchangeRateRespDTO pair = service.findExchangeRatePair(
-                    new ExchangeRateCodePairDTO(cleanCodesPair.substring(0, PROPER_CODES_LENGTH / 2),
-                            cleanCodesPair.substring(PROPER_CODES_LENGTH / 2, PROPER_CODES_LENGTH)
+            ExchangeRateRespDto pair = service.findExchangeRatePair(
+                    new ExchangeRateCodePairDto(
+                            normalizedBaseCode,
+                            normalizedTargetCode
                     )
             );
             writeResponse(resp, pair, HttpServletResponse.SC_OK);

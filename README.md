@@ -247,7 +247,7 @@ GET /exchange?from=USD&to=RUB&amount=10
 <details>
   <summary>Быстрый старт</summary>
 
-## Вариант A — Локальный запуск (windows, linux - чуть иначе)
+## Вариант A — Локальный запуск (Windows, Linux — чуть иначе)
 
 ### Требования
 
@@ -278,6 +278,10 @@ cd currency-exchange
 
 В проекте используется SQLite.
 
+Приложение работает с готовым SQLite-файлом `currency_exchange.db`.
+SQL-скрипты `schema.sql` и `data.sql` лежат в `docs/db` и приложены как справочные скрипты для ручного пересоздания БД.
+Во время старта приложения они автоматически не выполняются.
+
 JDBC URL не хранится непосредственно в исходном коде, а передаётся приложению через системное свойство JVM:
 
 ```text
@@ -286,10 +290,11 @@ db.url
 
 При запуске через IntelliJ IDEA необходимо открыть конфигурацию локального Tomcat и добавить в VM options:
 
+```text
 -Ddb.url=jdbc:sqlite:C:/projects/currency-exchange/src/main/data/currency_exchange.db
-(где томкат - едит конфигурейшенс)
+```
 
-Путь после jdbc:sqlite: должен указывать на существующий файл БД на вашей машине.
+Путь после `jdbc:sqlite:` должен указывать на существующий файл БД на вашей машине.
 
 ---
 
@@ -357,223 +362,6 @@ cp target/currency-exchange.war <TOMCAT_HOME>/webapps/ROOT.war
 -Ddb.url=jdbc:sqlite:<ABSOLUTE_PATH_TO_DB>
 ```
 
----
-
-## Вариант B — Запуск на сервере
-
-### Требования на сервере
-
-На сервере должны быть установлены:
-
-* **Ubuntu / Linux server**
-* **JDK 21**
-* **Apache Tomcat 9**
-* SQLite DB file, доступный пользователю `tomcat`
-
-Приложение деплоится как `ROOT.war`, чтобы endpoint-ы были доступны без дополнительного context path:
-
-```text
-http://<SERVER_IP>:8080/currencies
-http://<SERVER_IP>:8080/exchangeRates
-http://<SERVER_IP>:8080/exchange
-```
-
----
-
-### 1. Подготовить SQLite DB на сервере
-
-Создать директорию для базы данных:
-
-```bash
-mkdir -p /opt/tomcat/data
-```
-
-Скопировать файл БД на сервер:
-
-```bash
-scp src/main/data/currency_exchange.db root@<SERVER_IP>:/opt/tomcat/data/currency_exchange.db
-```
-
-Выдать права пользователю Tomcat:
-
-```bash
-chown -R tomcat:tomcat /opt/tomcat/data
-```
-
-Путь к серверной БД передаётся Tomcat через системное свойство `db.url`.
-
-Создать systemd override для Tomcat:
-
-```bash
-sudo systemctl edit tomcat
-```
-
-Добавить в открывшийся файл:
-
-[Service]
-Environment="CATALINA_OPTS=-Ddb.url=jdbc:sqlite:/opt/tomcat/data/currency_exchange.db"
-
-Сохранить файл и применить изменения:
-
-systemctl daemon-reload
-systemctl restart tomcat
-systemctl status tomcat
-
-Проверить, что переменная была добавлена:
-
-systemctl show tomcat --property=Environment
-
-В результате среди переменных окружения должно присутствовать:
-
-CATALINA_OPTS=-Ddb.url=jdbc:sqlite:/opt/tomcat/data/currency_exchange.db
-
-Эта настройка выполняется на сервере один раз и сохраняется при последующих деплоях приложения.
-
-
----
-
-### 2. Собрать WAR локально
-
-```bash
-mvn clean package
-```
-
----
-
-### 3. Подготовить скрипт деплоя на сервере
-
-Скрипт создаётся один раз и затем используется для повторных деплоев.
-
-Локально можно создать файл `deploy-currency-exchange.sh` со следующим содержимым:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-WAR_SRC="/tmp/ROOT.war"
-WEBAPPS="/opt/tomcat/webapps"
-
-if [ ! -f "$WAR_SRC" ]; then
-  echo "ERROR: $WAR_SRC not found"
-  echo "First upload WAR: scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war"
-  exit 1
-fi
-
-echo "Stopping tomcat..."
-systemctl stop tomcat
-
-echo "Removing old ROOT..."
-rm -rf "$WEBAPPS/ROOT"
-rm -f "$WEBAPPS/ROOT.war"
-
-echo "Moving new WAR..."
-mv "$WAR_SRC" "$WEBAPPS/ROOT.war"
-chown tomcat:tomcat "$WEBAPPS/ROOT.war"
-
-echo "Starting tomcat..."
-systemctl start tomcat
-
-echo "Status:"
-systemctl status tomcat --no-pager
-```
-
-Скопировать скрипт на сервер:
-
-```bash
-scp deploy-currency-exchange.sh root@<SERVER_IP>:/root/deploy-currency-exchange.sh
-```
-
-На сервере один раз выдать права на запуск и убрать Windows-переносы строк, если файл создавался в Windows:
-
-```bash
-chmod +x /root/deploy-currency-exchange.sh
-sed -i 's/
-$//' /root/deploy-currency-exchange.sh
-```
-
----
-
-### 4. Скопировать WAR на сервер
-
-WAR копируется во временную директорию `/tmp`:
-
-```bash
-scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war
-```
-
----
-
-### 5. Запустить скрипт деплоя
-
-Можно зайти на сервер и выполнить:
-
-```bash
-/root/deploy-currency-exchange.sh
-```
-
-Или запустить скрипт удалённо с локальной машины:
-
-```bash
-ssh root@<SERVER_IP> "/root/deploy-currency-exchange.sh"
-```
-
-Скрипт останавливает Tomcat, удаляет старое `ROOT`-приложение, переносит новый WAR в `webapps`, выдаёт права пользователю `tomcat` и снова запускает Tomcat.
-
----
-
-### 6. Проверить приложение
-
-Проверить REST API на сервере:
-
-```bash
-curl -i http://localhost:8080/currencies
-```
-
-Браузерный интерфейс снаружи доступен по адресу:
-
-http://<SERVER_IP>:8080/
-
-REST API доступен по адресам:
-
-http://<SERVER_IP>:8080/currencies
-http://<SERVER_IP>:8080/exchangeRates
-http://<SERVER_IP>:8080/exchange?from=USD&to=EUR&amount=100
-
----
-
-## Повторный деплой после изменений
-
-Если сервер уже настроен, для повторного деплоя достаточно локально собрать WAR и скопировать его на сервер во временную директорию:
-
-```bash
-mvn clean package
-scp target/currency-exchange.war root@<SERVER_IP>:/tmp/ROOT.war
-```
-
-Затем запустить серверный скрипт деплоя:
-
-```bash
-ssh root@<SERVER_IP> "/root/deploy-currency-exchange.sh"
-```
-
-Либо зайти на сервер и выполнить:
-
-```bash
-/root/deploy-currency-exchange.sh
-```
-
-Проверка:
-
-```bash
-curl -i http://localhost:8080/currencies
-```
-
-Браузерный интерфейс:
-
-```text
-http://<SERVER_IP>:8080/
-```
-
 </details>
 
 ---
@@ -587,7 +375,7 @@ http://<SERVER_IP>:8080/
 
 `REAL` как курс оставлен осознанно (`DECIMAL` / `NUMERIC` в SQLite не дают полноценной decimal-точности).
 
-Все же расчёты выполняются на стороне Java через `BigDecimal`:
+Все расчёты выполняются на стороне Java через `BigDecimal`:
 
 ```text
 rate — округляется до 6 знаков
@@ -615,7 +403,7 @@ CHECK(BaseCurrencyId <> TargetCurrencyId)
 
 Для работы с соединениями используется HikariCP.
 
-DAO по-прежнему получают `Connection` через `DBConnectionFactory`, а соединение - берётся из pool-а.
+DAO по-прежнему получают `Connection` через `DBConnectionFactory`, а соединение берётся из пула.
 
 Для SQLite (связано с особенностями SQLite как файловой БД) используется:
 
@@ -623,7 +411,7 @@ DAO по-прежнему получают `Connection` через `DBConnection
 maximumPoolSize = 1
 ```
 
-При остановке или redeploy приложения pool закрывается через `ServletContextListener`.
+При остановке приложения пул закрывается через `ServletContextListener`.
 
 ---
 
@@ -680,9 +468,9 @@ DAO / Service выбрасывают project exceptions, а servlet-слой п�
 request encoding — UTF-8 
 response encoding — UTF-8
 ```
-(Content-Type: application/json - не выставленна намеренно, т.к. есть JS для отображения фронта)
+`Content-Type: application/json` не выставляется в filter намеренно, потому что через него также отдаются статические файлы фронтенда.
 
-Установка JSON content type, сериализация успешных ответов и запись ошибок выполняются в BaseApiServlet
+Установка JSON content type, сериализация успешных ответов и запись ошибок выполняются в `BaseApiServlet`.
 
 </details>
 
@@ -691,15 +479,13 @@ response encoding — UTF-8
 ## Важные замечания
 
 * Проект использует **Tomcat 9**, потому что servlet API в проекте основан на `javax.servlet`.
-* Приложение деплоится как `ROOT.war`, поэтому браузерный интерфейс доступен по корневому адресу, а REST API — без дополнительного context path.
 * JDBC URL должен быть передан JVM через системное свойство `db.url`.
-* Пользователь `tomcat` должен иметь права на чтение и запись файла БД и директории, где он расположен.
 * Фронтенд обращается к API через относительный адрес `host = "."`, поэтому один и тот же код работает локально и на удалённом сервере.
 * `Content-Type: application/json` устанавливается только для API-ответов в `BaseApiServlet`.
 * Если используется HikariCP, `Connection.close()` в DAO не закрывает физическое соединение, а возвращает его в connection pool.
-* При остановке или redeploy web-приложения Hikari pool закрывается через `ServletContextListener`.
+* При остановке web-приложения Hikari pool закрывается через `ServletContextListener`.
 
 ## Контакты
 
 Автор: [@timk01](https://github.com/timk01)
-Телеграмм: https://t.me/tim_matv
+Telegram: https://t.me/tim_matv

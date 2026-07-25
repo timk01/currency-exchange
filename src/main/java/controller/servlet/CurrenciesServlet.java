@@ -1,8 +1,8 @@
 package controller.servlet;
 
 import controller.servlet.util.ValidationsUtil;
-import dto.request.CurrencyReqDTO;
-import dto.responce.CurrencyRespDTO;
+import dto.request.CurrencyReqDto;
+import dto.response.CurrencyRespDto;
 import exception.CurrencyAlreadyExistsException;
 import exception.InternalServerException;
 import service.CurrenciesService;
@@ -27,7 +27,7 @@ public class CurrenciesServlet extends BaseApiServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
-            List<CurrencyRespDTO> allCurrencies = currencyService.findAllCurrencies();
+            List<CurrencyRespDto> allCurrencies = currencyService.findAllCurrencies();
             writeResponse(resp, allCurrencies, HttpServletResponse.SC_OK);
         } catch (InternalServerException e) {
             write500Error(resp, e);
@@ -49,6 +49,10 @@ public class CurrenciesServlet extends BaseApiServlet {
             return;
         }
 
+        name = ValidationsUtil.trimNameOrSign(name);
+        code = ValidationsUtil.normalizeCode(code);
+        sign = ValidationsUtil.trimNameOrSign(sign);
+
         if (ValidationsUtil.hasLengthNotEqualToExpected(code, PROPER_CODE_LENGTH)) {
             writeError(
                     resp,
@@ -68,7 +72,12 @@ public class CurrenciesServlet extends BaseApiServlet {
         }
 
         try {
-            CurrencyRespDTO currency = currencyService.createCurrency(new CurrencyReqDTO(name, code, sign));
+            CurrencyRespDto currency = currencyService.createCurrency(
+                    new CurrencyReqDto(
+                            name,
+                            code,
+                            sign
+                    ));
             writeResponse(resp, currency, HttpServletResponse.SC_CREATED);
         } catch (CurrencyAlreadyExistsException e) {
             writeError(resp, e.getMessage(), HttpServletResponse.SC_CONFLICT);

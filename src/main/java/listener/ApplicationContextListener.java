@@ -12,6 +12,11 @@ public class ApplicationContextListener implements ServletContextListener {
     }
 
     @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        DBConnectionFactory.init();
+    }
+
+    @Override
     public void contextDestroyed(ServletContextEvent sce) {
         DBConnectionFactory.closePool();
     }

@@ -1,6 +1,6 @@
 package dao;
 
-import dto.request.ExchangeRateCodePairDTO;
+import dto.request.ExchangeRateCodePairDto;
 import exception.ExchangeRateAlreadyExistsException;
 import exception.ExchangeRatePairDoesNotExistException;
 import exception.InternalServerException;
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ExchangeRatesDAO {
+public class ExchangeRatesImpl implements ExchangeRatesDao {
 
     /**
      * Join в строке запроса позволяет избежать кучи дополнительных запросов и n+1 проблемы
@@ -39,10 +39,8 @@ public class ExchangeRatesDAO {
                           ON ER.TargetCurrencyId = targetCurrency.ID
             """;
 
-    public ExchangeRatesDAO() {
-    }
-
-    public List<ExchangeRateTableProjection> findAllExchangeRates() {
+    @Override
+    public List<ExchangeRateTableProjection> findAll() {
         List<ExchangeRateTableProjection> exchangeRates = new ArrayList<>();
         try (Connection connection = DBConnectionFactory.getConnection()) {
             try (PreparedStatement ps = connection.prepareStatement(SELECT_EXCHANGE_RATE_PROJECTION)) {
@@ -58,7 +56,8 @@ public class ExchangeRatesDAO {
         return exchangeRates;
     }
 
-    public ExchangeRateTableProjection findExchangeRatePair(ExchangeRateCodePairDTO pair) {
+    @Override
+    public ExchangeRateTableProjection findExchangeRatePair(ExchangeRateCodePairDto pair) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             return getRequiredExchangeRateTableProjection(pair, connection);
         } catch (SQLException e) {
@@ -70,7 +69,8 @@ public class ExchangeRatesDAO {
         }
     }
 
-    public Optional<ExchangeRateTableProjection> optionalFindExchangeRatePair(ExchangeRateCodePairDTO pair) {
+    @Override
+    public Optional<ExchangeRateTableProjection> optionalFindExchangeRatePair(ExchangeRateCodePairDto pair) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             return getExchangeRateTableProjection(pair, connection);
         } catch (SQLException e) {
@@ -95,7 +95,9 @@ public class ExchangeRatesDAO {
      * @param rate
      * @return
      */
-    public ExchangeRateTableProjection updateExchangeRatePairRate(ExchangeRateCodePairDTO pair, double rate) {
+
+    @Override
+    public ExchangeRateTableProjection update(ExchangeRateCodePairDto pair, double rate) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             connection.setAutoCommit(false);
             try {
@@ -134,12 +136,12 @@ public class ExchangeRatesDAO {
             throw new InternalServerException(String.format(
                     "Cannot update pair with codes '%s' and '%s'",
                     pair.baseCode(), pair.targetCode()),
-            e);
+                    e);
         }
     }
 
     private ExchangeRateTableProjection getRequiredExchangeRateTableProjection(
-            ExchangeRateCodePairDTO pair,
+            ExchangeRateCodePairDto pair,
             Connection connection
     ) throws SQLException {
         Optional<ExchangeRateTableProjection> exchangeRateTableProjection =
@@ -152,7 +154,7 @@ public class ExchangeRatesDAO {
         );
     }
 
-    private Optional<ExchangeRateTableProjection> getExchangeRateTableProjection(ExchangeRateCodePairDTO pair, Connection connection) throws SQLException {
+    private Optional<ExchangeRateTableProjection> getExchangeRateTableProjection(ExchangeRateCodePairDto pair, Connection connection) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
                 SELECT_EXCHANGE_RATE_PROJECTION + "WHERE baseCurrency.Code = ? AND targetCurrency.Code = ?")
         ) {
@@ -187,7 +189,8 @@ public class ExchangeRatesDAO {
         );
     }
 
-    public ExchangeRateTableProjection createExchangeRate(ExchangeRateTransfer transferData) {
+    @Override
+    public ExchangeRateTableProjection insert(ExchangeRateTransfer transferData) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
             try (PreparedStatement ps = connection.prepareStatement(
                     "insert into ExchangeRates(BaseCurrencyId, TargetCurrencyId, Rate)\n" +

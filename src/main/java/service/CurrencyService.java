@@ -1,22 +1,23 @@
 package service;
 
 import converter.Converter;
-import converter.CurrencyToCurrencyDTOConverter;
-import dao.CurrencyDAO;
-import dto.responce.CurrencyRespDTO;
+import converter.CurrencyToCurrencyDtoConverter;
+import dao.CurrencyDao;
+import dao.CurrencyDaoImpl;
+import dto.response.CurrencyRespDto;
 import model.Currency;
 
 public class CurrencyService {
-    private final CurrencyDAO currencyDAO;
-    private final Converter<CurrencyRespDTO, Currency> converter;
+    private final CurrencyDao currencyDao;
+    private final Converter<CurrencyRespDto, Currency> converter;
 
     public CurrencyService() {
-        this.currencyDAO = new CurrencyDAO();
-        this.converter = new CurrencyToCurrencyDTOConverter();
+        this.currencyDao = new CurrencyDaoImpl();
+        this.converter = new CurrencyToCurrencyDtoConverter();
     }
 
-    public CurrencyRespDTO findCurrency(String code) {
-        Currency currency = currencyDAO.findCurrency(code);
+    public CurrencyRespDto findCurrency(String code) {
+        Currency currency = currencyDao.findByCode(code);
         return converter.convert(currency);
     }
 }

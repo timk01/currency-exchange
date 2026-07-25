@@ -1,7 +1,8 @@
 package dao;
 
-import dto.request.CurrencyReqDTO;
+import dto.request.CurrencyReqDto;
 import exception.CurrencyAlreadyExistsException;
+import exception.CurrencyIsNotFoundException;
 import exception.InternalServerException;
 import model.Currency;
 import org.sqlite.SQLiteErrorCode;
@@ -11,12 +12,9 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CurrenciesDAO {
-
-    public CurrenciesDAO() {
-    }
-
-    public List<Currency> findAllCurrencies() {
+public class CurrencyDaoImpl implements CurrencyDao {
+    @Override
+    public List<Currency> findAll() {
         List<Currency> currencies = new ArrayList<>();
         try (Connection connection = DBConnectionFactory.getConnection()) {
             try (PreparedStatement ps = connection.prepareStatement("select * from Currencies")) {
@@ -37,6 +35,32 @@ public class CurrenciesDAO {
         return currencies;
     }
 
+    @Override
+    public Currency findByCode(String code) {
+        try (Connection connection = DBConnectionFactory.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement("select * from Currencies where Code = ?")) {
+                ps.setString(1, code);
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    if (resultSet.next()) {
+                        return new Currency(
+                                resultSet.getInt("ID"),
+                                resultSet.getString("Code"),
+                                resultSet.getString("FullName"),
+                                resultSet.getString("Sign")
+                        );
+                    } else {
+                        throw new CurrencyIsNotFoundException("Currency with code '" + code + "' was not found");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new InternalServerException(
+                    "Failed to read currency with code '" + code + "' from the database",
+                    e
+            );
+        }
+    }
+
     /**
      * Создаёт новую валюту в БД и возвращает созданную модель с ID,
      * сгенерированным базой данных.
@@ -49,7 +73,9 @@ public class CurrenciesDAO {
      * @throws CurrencyAlreadyExistsException если валюта с таким code уже существует (поле code униально)
      * @throws InternalServerException        если произошла ошибка БД ИЛИ не удалось получить generated key
      */
-    public Currency createCurrency(CurrencyReqDTO currencyReqDTO) {
+
+    @Override
+    public Currency insert(CurrencyReqDto currencyReqDTO) {
         try (Connection connection = DBConnectionFactory.getConnection()) {
 
             validateCurrencyCodeBefore(currencyReqDTO, connection);
@@ -92,7 +118,7 @@ public class CurrenciesDAO {
         }
     }
 
-    private void validateCurrencyCodeBefore(CurrencyReqDTO currencyReqDTO, Connection connection) throws SQLException {
+    private void validateCurrencyCodeBefore(CurrencyReqDto currencyReqDTO, Connection connection) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement("select Code from Currencies where Code = ?")) {
             ps.setString(1, currencyReqDTO.code());
             try (ResultSet resultSet = ps.executeQuery()) {

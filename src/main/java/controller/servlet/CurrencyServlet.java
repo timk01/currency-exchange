@@ -1,7 +1,7 @@
 package controller.servlet;
 
 import controller.servlet.util.ValidationsUtil;
-import dto.responce.CurrencyRespDTO;
+import dto.response.CurrencyRespDto;
 import exception.CurrencyIsNotFoundException;
 import exception.InternalServerException;
 import service.CurrencyService;
@@ -13,6 +13,7 @@ import java.io.IOException;
 
 @WebServlet(urlPatterns = "/currency/*")
 public class CurrencyServlet extends BaseApiServlet {
+    private final static int PROPER_CODE_LENGTH = 3;
 
     private final CurrencyService currencyService;
 
@@ -33,8 +34,21 @@ public class CurrencyServlet extends BaseApiServlet {
             return;
         }
 
+        String normalizedCode = ValidationsUtil.normalizeCode(rawCode.substring(1));
+
+        if (ValidationsUtil.hasLengthNotEqualToExpected(normalizedCode, PROPER_CODE_LENGTH)) {
+            writeError(
+                    resp,
+                    "currency code has wrong length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return;
+        }
+
         try {
-            CurrencyRespDTO foundCurrency = currencyService.findCurrency(rawCode.substring(1));
+            CurrencyRespDto foundCurrency = currencyService.findCurrency(
+                    normalizedCode
+            );
             writeResponse(resp, foundCurrency, HttpServletResponse.SC_OK);
         } catch (CurrencyIsNotFoundException e) {
             writeError(resp, e.getMessage(), HttpServletResponse.SC_NOT_FOUND);

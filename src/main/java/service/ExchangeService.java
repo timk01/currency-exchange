@@ -1,9 +1,13 @@
 package service;
 
-import dao.ExchangeRatesDAO;
-import dto.request.ExchangeRateCodePairDTO;
-import dto.request.ExchangeRequestDTO;
-import dto.responce.ExchangeRateExtendedRespDTO;
+import converter.Converter;
+import converter.CurrencyToCurrencyDtoConverter;
+import dao.ExchangeRatesDao;
+import dao.ExchangeRatesImpl;
+import dto.request.ExchangeRateCodePairDto;
+import dto.request.ExchangeReqDto;
+import dto.response.CurrencyRespDto;
+import dto.response.ExchangeRespDTO;
 import exception.ExchangeRateNotFoundException;
 import model.Currency;
 import model.ExchangeRateTableProjection;
@@ -15,49 +19,52 @@ import java.util.Optional;
 public class ExchangeService {
     private static final String CROSS_COURSE_CONSTANT = "USD";
 
-    private final ExchangeRatesDAO exchangeRatesDAO;
+    private final ExchangeRatesDao exchangeRatesDao;
+
+    private final Converter<CurrencyRespDto, Currency> dtoCurrencyConverter;
 
     public ExchangeService() {
-        this.exchangeRatesDAO = new ExchangeRatesDAO();
+        this.exchangeRatesDao = new ExchangeRatesImpl();
+        this.dtoCurrencyConverter = new CurrencyToCurrencyDtoConverter();
     }
 
-    public ExchangeRateExtendedRespDTO calculateExchange(ExchangeRequestDTO exchangeRequestDTO) {
-        String baseCode = exchangeRequestDTO.baseCode();
-        String targetCode = exchangeRequestDTO.targetCode();
+    public ExchangeRespDTO calculateExchange(ExchangeReqDto exchangeReqDto) {
+        String baseCode = exchangeReqDto.baseCode();
+        String targetCode = exchangeReqDto.targetCode();
 
-        Optional<ExchangeRateTableProjection> optionalProjection = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(baseCode, targetCode));
+        Optional<ExchangeRateTableProjection> optionalProjection = exchangeRatesDao
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDto(baseCode, targetCode));
         if (optionalProjection.isPresent()) {
-            return buildStraightCourse(exchangeRequestDTO, optionalProjection.get());
+            return buildStraightCourse(exchangeReqDto, optionalProjection.get());
         }
 
-        optionalProjection = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(targetCode, baseCode));
+        optionalProjection = exchangeRatesDao
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDto(targetCode, baseCode));
         if (optionalProjection.isPresent()) {
-            return buildBackWardCourse(exchangeRequestDTO, optionalProjection.get());
+            return buildBackWardCourse(exchangeReqDto, optionalProjection.get());
         }
 
-        Optional<ExchangeRateTableProjection> usdBasedProjectionForBase = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(CROSS_COURSE_CONSTANT, baseCode));
-        Optional<ExchangeRateTableProjection> usdBasedProjectionForTarget = exchangeRatesDAO
-                .optionalFindExchangeRatePair(new ExchangeRateCodePairDTO(CROSS_COURSE_CONSTANT, targetCode));
+        Optional<ExchangeRateTableProjection> usdBasedProjectionForBase = exchangeRatesDao
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDto(CROSS_COURSE_CONSTANT, baseCode));
+        Optional<ExchangeRateTableProjection> usdBasedProjectionForTarget = exchangeRatesDao
+                .optionalFindExchangeRatePair(new ExchangeRateCodePairDto(CROSS_COURSE_CONSTANT, targetCode));
         if (usdBasedProjectionForBase.isPresent() && usdBasedProjectionForTarget.isPresent()) {
             return buildCrossUSDCourse(
-                    exchangeRequestDTO,
+                    exchangeReqDto,
                     usdBasedProjectionForBase.get(),
                     usdBasedProjectionForTarget.get()
             );
         }
 
         throw new ExchangeRateNotFoundException(String.format("Exchange rate '%s' - '%s' is not available",
-                exchangeRequestDTO.baseCode(), exchangeRequestDTO.targetCode()));
+                exchangeReqDto.baseCode(), exchangeReqDto.targetCode()));
     }
 
-    private ExchangeRateExtendedRespDTO buildStraightCourse(
-            ExchangeRequestDTO exchangeRequestDTO,
+    private ExchangeRespDTO buildStraightCourse(
+            ExchangeReqDto exchangeReqDTO,
             ExchangeRateTableProjection projection
     ) {
-        BigDecimal amount = exchangeRequestDTO.amount();
+        BigDecimal amount = exchangeReqDTO.amount();
         BigDecimal rate = BigDecimal.valueOf(projection.rate()).setScale(6, RoundingMode.HALF_UP);
 
         return buildExchangeResponse(
@@ -68,11 +75,11 @@ public class ExchangeService {
         );
     }
 
-    private ExchangeRateExtendedRespDTO buildBackWardCourse(
-            ExchangeRequestDTO exchangeRequestDTO,
+    private ExchangeRespDTO buildBackWardCourse(
+            ExchangeReqDto exchangeReqDTO,
             ExchangeRateTableProjection projection
     ) {
-        BigDecimal amount = exchangeRequestDTO.amount();
+        BigDecimal amount = exchangeReqDTO.amount();
         BigDecimal rate = countSimpleRate(BigDecimal.valueOf(projection.rate()));
 
         return buildExchangeResponse(
@@ -87,12 +94,12 @@ public class ExchangeService {
         return BigDecimal.ONE.divide(rate, 6, RoundingMode.HALF_UP);
     }
 
-    private ExchangeRateExtendedRespDTO buildCrossUSDCourse(
-            ExchangeRequestDTO exchangeRequestDTO,
+    private ExchangeRespDTO buildCrossUSDCourse(
+            ExchangeReqDto exchangeReqDTO,
             ExchangeRateTableProjection usdBasedProjectionForBase,
             ExchangeRateTableProjection usdBasedProjectionForTarget
     ) {
-        BigDecimal amount = exchangeRequestDTO.amount();
+        BigDecimal amount = exchangeReqDTO.amount();
         double basedRate = usdBasedProjectionForBase.rate();
         double targetRate = usdBasedProjectionForTarget.rate();
         BigDecimal rate = countComplexRate(BigDecimal.valueOf(basedRate), BigDecimal.valueOf(targetRate));
@@ -109,15 +116,19 @@ public class ExchangeService {
         return targetRate.divide(baseRate, 6, RoundingMode.HALF_UP);
     }
 
-    private ExchangeRateExtendedRespDTO buildExchangeResponse(
+    private ExchangeRespDTO buildExchangeResponse(
             Currency baseCurrency,
             Currency targetCurrency,
             BigDecimal rate,
             BigDecimal amount
     ) {
-        return new ExchangeRateExtendedRespDTO(
-                baseCurrency,
-                targetCurrency,
+
+        CurrencyRespDto baseDto = dtoCurrencyConverter.convert(baseCurrency);
+        CurrencyRespDto targetDto = dtoCurrencyConverter.convert(targetCurrency);
+
+        return new ExchangeRespDTO(
+                baseDto,
+                targetDto,
                 rate,
                 amount,
                 countAmount(amount, rate)

@@ -1,8 +1,8 @@
 package controller.servlet;
 
 import controller.servlet.util.ValidationsUtil;
-import dto.request.ExchangeRequestDTO;
-import dto.responce.ExchangeRateExtendedRespDTO;
+import dto.request.ExchangeReqDto;
+import dto.response.ExchangeRespDTO;
 import exception.ExchangeRateNotFoundException;
 import exception.InternalServerException;
 import service.ExchangeService;
@@ -15,6 +15,8 @@ import java.math.BigDecimal;
 
 @WebServlet(urlPatterns = "/exchange")
 public class ExchangeServlet extends BaseApiServlet {
+    private final static int PROPER_CODE_LENGTH = 3;
+
     private final ExchangeService service;
 
     public ExchangeServlet() {
@@ -36,6 +38,20 @@ public class ExchangeServlet extends BaseApiServlet {
             return;
         }
 
+        baseCode = ValidationsUtil.normalizeCode(baseCode);
+        targetCode = ValidationsUtil.normalizeCode(targetCode);
+
+        if (ValidationsUtil.hasLengthNotEqualToExpected(baseCode, PROPER_CODE_LENGTH)
+                || ValidationsUtil.hasLengthNotEqualToExpected(targetCode, PROPER_CODE_LENGTH)) {
+            writeError(
+                    resp,
+                    "currency code has wrong length",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+            return;
+        }
+
+        amount = amount.trim();
         BigDecimal parsedAmount;
         try {
             parsedAmount = new BigDecimal(amount);
@@ -52,8 +68,11 @@ public class ExchangeServlet extends BaseApiServlet {
         }
 
         try {
-            ExchangeRateExtendedRespDTO crossCourse = service.calculateExchange(
-                    new ExchangeRequestDTO(baseCode, targetCode, parsedAmount)
+            ExchangeRespDTO crossCourse = service.calculateExchange(
+                    new ExchangeReqDto(
+                            baseCode,
+                            targetCode,
+                            parsedAmount)
             );
             writeResponse(resp, crossCourse, HttpServletResponse.SC_OK);
         } catch (ExchangeRateNotFoundException e) {

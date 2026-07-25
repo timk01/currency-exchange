@@ -1,33 +1,34 @@
 package service;
 
 import converter.Converter;
-import converter.CurrencyToCurrencyDTOConverter;
-import dao.CurrenciesDAO;
-import dto.request.CurrencyReqDTO;
-import dto.responce.CurrencyRespDTO;
+import converter.CurrencyToCurrencyDtoConverter;
+import dao.CurrencyDao;
+import dao.CurrencyDaoImpl;
+import dto.request.CurrencyReqDto;
+import dto.response.CurrencyRespDto;
 import model.Currency;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CurrenciesService {
-    private final CurrenciesDAO currencyDAO;
-    private final Converter<CurrencyRespDTO, Currency> converter;
+    private final CurrencyDao currencyDao;
+    private final Converter<CurrencyRespDto, Currency> converter;
 
     public CurrenciesService() {
-        this.currencyDAO = new CurrenciesDAO();
-        this.converter = new CurrencyToCurrencyDTOConverter();
+        this.currencyDao = new CurrencyDaoImpl();
+        this.converter = new CurrencyToCurrencyDtoConverter();
     }
 
-    public List<CurrencyRespDTO> findAllCurrencies() {
-        List<Currency> currencies = currencyDAO.findAllCurrencies();
+    public List<CurrencyRespDto> findAllCurrencies() {
+        List<Currency> currencies = currencyDao.findAll();
         return currencies.stream()
                 .map(currency -> converter.convert(currency))
                 .collect(Collectors.toList());
     }
 
-    public CurrencyRespDTO createCurrency(CurrencyReqDTO currencyReqDTO) {
-        Currency currency = currencyDAO.createCurrency(currencyReqDTO);
+    public CurrencyRespDto createCurrency(CurrencyReqDto currencyReqDTO) {
+        Currency currency = currencyDao.insert(currencyReqDTO);
         return converter.convert(currency);
     }
 }
